@@ -1,5 +1,5 @@
 # Zack's HLSL To FlatOut 2 Shader
-It's a python script that takes an HLSL script and creates an SHA file from it for use in FlatOut 2
+It's a python script that takes an HLSL script and creates an SHA file from it for use in FlatOut 2.
 <br>
 Right now it only supports writing pixel shaders, vertex shader support is still being worked on
 
@@ -128,7 +128,7 @@ float4 PixelShader(float4 colour, float4 specular, float4 dirt, float4 lighting)
 ```
 
 # Troubleshooting
-There are some very specific limitations with the assembly, so even though the HLSL may compile fine, that doesn't mean FlatOut 2 will be able to compile it.
+There are some very specific limitations with the assembly [which are documented here](https://learn.microsoft.com/en-us/windows/win32/direct3dhlsl/dx9-graphics-reference-asm-ps-1-x), so even though the HLSL may compile fine, that doesn't mean FlatOut 2 will be able to compile it.
 
 <br>
 
