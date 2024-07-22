@@ -12,18 +12,18 @@ The script also has the option to run in a loop, so that when it detects the fil
 <br>
 The main thing you need is to define the PixelShader function, like so:
 ```hlsl
-  float4 PixelShader()
-  {
-    // All code in here will end up in the pixel shader of the SHA file
-  }
+float4 PixelShader()
+{
+  // All code in here will end up in the pixel shader of the SHA file
+}
 ```
 
 The inputs of the PixelShader function corrospond to texture samples, so to output the first texture:
 ```hlsl
-  float4 PixelShader(float4 tex0)
-  {
-    return tex0;
-  }
+float4 PixelShader(float4 tex0)
+{
+  return tex0;
+}
 ```
 
 The type of texture that it corrosponds to is determined by the original shader that you are overriding.
@@ -40,10 +40,10 @@ tex		t3	; N * L
 So my re-implementation would look something like this:
 
 ```hlsl
-  float4 PixelShader(float4 colour, float4 specular, float4 dirt, float4 lighting)
-  {
-    //...
-  }
+float4 PixelShader(float4 colour, float4 specular, float4 dirt, float4 lighting)
+{
+  //...
+}
 ```
 
 FlatOut 2 uses pixel shaders v1.1 - 1.3, and those ones are extremely basic so the HLSL has some quirks.
