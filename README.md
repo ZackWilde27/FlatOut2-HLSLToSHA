@@ -1,6 +1,10 @@
-# Zack's HLSL To FlatOut 2 Shader
-It's a python script that takes an HLSL script and creates an SHA file from it for use in FlatOut 1 or 2.
+# Zack's High Level Shader Language (HLSL) To FlatOut Shader (SHA)
+It's a python script that converts the HLSL script into assembly and creates an SHA file from it for use in FlatOut 1 or 2.
 <br>
+*(It was originally made for 2 but I checked and the first game uses the exact same format)*
+
+<br>
+
 Right now it only supports writing pixel shaders, vertex shader support is still being worked on
 
 <br>
@@ -67,7 +71,7 @@ float4 var2 = lerp(var1, dirt, specular.a);
 float4 var3 = dirt; // This will cause issues or fail to compile
 ```
 
-Though, you can have up to 30 constants, which can hold misc. data for use in the shader
+Though, you can have up to 29 constants, which can hold misc. data for use in the shader (It's actually 32 but the game reserves the first 3)
 ```hlsl
 float4 const1 = float4(0.0f, 0.0f, 1.0f, 1.0f);
 float4 const2 = float4(1.0f, 1.0f, 1.0f, 1.0f);
@@ -136,11 +140,25 @@ So in summary I can write a car body shader like this:
 ```hlsl
 float4 PixelShader(float4 colour, float4 specular, float4 dirt, float4 lighting)
 {
+    float4 brightness = float4(0.0f, 0.0f, 0.0f, 0.75f); // a = ambient multiplier
+
     float4 c = specular * FRESNEL;
-    c = saturate(c + colour);
-    float4 l = lighting * SHADOW;
-    l = saturate(l + AMBIENT);
+    float4 l = lerp(colour, dirt, BLEND);
+    c = saturate(c + l);
+    l = lighting * SHADOW;
+    l = saturate(mad(AMBIENT, brightness.a, l));
     return c * l;
+}
+```
+
+<br><br>
+
+Bonus tip: Type doesn't really matter when defining the return value and type of the inputs, so they are optional
+```hlsl
+PixelShader(colour, specular, dirt, lighting)
+{
+    float4 c = specular * FRESNEL;
+    //...
 }
 ```
 
