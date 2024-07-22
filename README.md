@@ -6,6 +6,8 @@ It's a python script that takes an HLSL script and creates an SHA file from it f
 <br>
 At the start it'll prompt you for an HLSL file to convert. The resulting shader file will be in the same spot with the same name, just with the .sha extension.
 
+<br>
+
 The script also has the option to run in a loop, so that when it detects the file has changed, it'll automatically recompile. This is useful for me when debugging, so it may also have some use to you.
 
 ## HLSL
