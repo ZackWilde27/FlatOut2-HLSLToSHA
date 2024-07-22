@@ -479,6 +479,7 @@ while stuckInLoop:
         mtime = os.path.getmtime(filename)
         hvars = []
         fvars = []
+        constants = 3
         r0 = ""
         r1 = ""
         linenum = 0
@@ -521,7 +522,7 @@ while stuckInLoop:
                 sfile.write("///////////////////////////////////////////////////////////////////////////\n")
                 sfile.write("// Created on " + str(tstruct.tm_mon) + "/" + str(tstruct.tm_mday) + "/" + str(tstruct.tm_year) + " " + str((tstruct.tm_hour if tstruct.tm_hour < 13 else tstruct.tm_hour - 12)) + ":" + str(tstruct.tm_min).rjust(2, "0") + ":" + str(tstruct.tm_sec).rjust(2, "0") + " " + ("PM" if tstruct.tm_hour > 12 else "AM") + "\n")
                 sfile.write("//\n")
-                sfile.write("// Generated with Zack's HLSL-to-FlatOut-2-Pixel-Shader v1.0\n")
+                sfile.write("// Generated with Zack's HLSL-to-FlatOut-2-Pixel-Shader v1.1\n")
                 sfile.write("///////////////////////////////////////////////////////////////////////////\n")
 
                 for i in range(textures):
