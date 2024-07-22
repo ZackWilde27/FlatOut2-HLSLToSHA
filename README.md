@@ -1,5 +1,5 @@
 # Zack's HLSL To FlatOut 2 Shader
-It's a python script that takes an HLSL script and creates an SHA file from it for use in FlatOut 2.
+It's a python script that takes an HLSL script and creates an SHA file from it for use in FlatOut 1 or 2.
 <br>
 Right now it only supports writing pixel shaders, vertex shader support is still being worked on
 
