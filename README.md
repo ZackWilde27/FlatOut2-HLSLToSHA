@@ -109,6 +109,23 @@ myVar -= dirt;
 
 <br><br>
 
+### Splitting Vectors
+
+In ps.1.1, splitting can only be done if it's the alpha channel
+```hlsl
+myVar = SHADOW.a;
+myVar = AMBIENT.aaaa * myVar.a;
+
+myVar = SHADOW.x; // The game can't compile this
+```
+
+Using z/b is possible, but only when the destination is the alpha channel
+```hlsl
+myVar.a = SHADOW.z;
+```
+
+<br><br>
+
 Lastly, there are some special constants that the game uses, those can be accessed with keywords
 - SHADOW : The shadow mask of the track
 - AMBIENT : Ambient lighting
