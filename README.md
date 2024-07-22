@@ -1,7 +1,7 @@
 # Zack's HLSL To FlatOut 2 Shader
 It's a python script that takes an HLSL script and creates an SHA file from it for use in FlatOut 2
 <br>
-Right now it only supports the pixel shaders, vertex shader support is still being worked on
+Right now it only supports writing pixel shaders, vertex shader support is still being worked on
 
 <br>
 
@@ -10,7 +10,7 @@ Right now it only supports the pixel shaders, vertex shader support is still bei
 At the start it'll prompt you for an HLSL file to convert. The resulting shader file will be in the same spot with the same name, just with the .sha extension.
 <br>
 <br>
-The script also has the option to run in a loop, so that when it detects the file has changed, it'll automatically recompile. It's especially useful for debugging
+The script also has the option to run in a loop, so that when it detects the file has changed, it'll automatically recompile. Useful for debugging, and maybe other things too.
 
 <br><br>
 
@@ -35,7 +35,7 @@ float4 PixelShader(float4 tex0)
 
 The type of texture that it corrosponds to is determined by the original shader that you are overriding.
 
-For example, the original car body shader's textures are arranged like so in the original file:
+The original car body shader's textures are arranged like so in the original file:
 ```
 tex		t0	; Base color
 tex		t1	; Reflection + specular alpha
@@ -98,7 +98,7 @@ myVar = lerp(colour, dirt, lighting.a);
 
 ### Math
 
-There can only be 1 math expression in a line, but other than that its exactly how you'd expect, except you've only got *, +, and -, there's no divide.
+There can only be 1 math expression in a line, but other than that its exactly how you'd expect, except there's no divide.
 
 For example:
 ```hlsl
@@ -126,3 +126,10 @@ float4 PixelShader(float4 colour, float4 specular, float4 dirt, float4 lighting)
     return c * l;
 }
 ```
+
+# Troubleshooting
+There are some very specific limitations with the assembly, so even though the HLSL may compile fine, that doesn't mean FlatOut 2 will be able to compile it.
+
+<br>
+
+When this happens the only error message you will get says "Failed to create effect" with no explanation, but the error message actually exists in the game's memory. Using cheat engine if you search for the string "X error" you will find all of the compiler errors.
