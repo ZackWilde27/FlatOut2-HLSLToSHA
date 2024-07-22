@@ -12,11 +12,6 @@ At the start it'll prompt you for an HLSL file to convert. The resulting shader 
 <br>
 The script also has the option to run in a loop, so that when it detects the file has changed, it'll automatically recompile. Useful for debugging, and maybe other things too.
 
-<br>
-<br>
-
-When it's done, replace the pixel shader of the desired SHA file with the pixel shader of the new SHA file. Once I get vertex shader support finished it'll be a drop-in replacement.
-
 <br><br>
 
 ## HLSL
