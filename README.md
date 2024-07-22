@@ -9,7 +9,7 @@ At the start it'll prompt you for an HLSL file to convert. The resulting shader 
 The script also has the option to run in a loop, so that when it detects the file has changed, it'll automatically recompile. This is useful for me when debugging, so it may also have some use to you.
 
 ## HLSL
-<br>
+
 The main thing you need is to define the PixelShader function, like so:
 ```hlsl
 float4 PixelShader()
