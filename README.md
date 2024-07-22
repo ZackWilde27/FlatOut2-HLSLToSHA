@@ -132,4 +132,4 @@ There are some very specific limitations with the assembly [which are documented
 
 <br>
 
-When this happens the only error message you will get says "Failed to create effect" with no explanation, but the error message exists in the game's memory. Using cheat engine if you search for the string "X error" you will find all of the compiler errors.
+If it fails the only error message you will get says "Failed to create effect" with no explanation, but the error message exists in the game's memory. Using cheat engine if you search for the string "X error" you will find all of the compiler errors.
