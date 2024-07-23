@@ -1,5 +1,5 @@
 # Zack's HLSL to FlatOut 2 ps.1.1 Assembly Converter
-# Version 0.1
+# Version 1.2
 
 try:
     from tkinter import filedialog
@@ -48,6 +48,7 @@ class FVar:
     def __str__(self):
         return self.name
 
+
 class AVar:
     def __init__(self, name, code):
         self.name = name
@@ -58,16 +59,22 @@ col = 0
 scope = "global"
 typeOfExpr = ""
 
+def Error(message):
+    print("Error in " + scope + " line " + str(linenum) + " (" + typeOfExpr + "): " + message)
+
+def every(string1, string2):
+    return all([(char in string2) for char in string1])
+        
+
 dhvars = [HVar("SHADOW", "c2", ""), HVar("AMBIENT", "v0", ""), HVar("FRESNEL", "v0.a", ""), HVar("BLEND", "v1.a", "")]
 hvars = []
 fvars = []
-avars = [AVar("dot", "dp3\t%0, %1, %2"), AVar("lerp", "lrp\t%0, %3, %1, %2"), AVar("mad", "mad\t%0, %1, %2, %3")]
+avars = [AVar("dot", "dp3\t%0, %1, %2"), AVar("lerp", "lrp\t%0, %3, %1, %2"), AVar("mad", "mad\t%0, %1, %2, %3"), AVar("length", "dp3\t%0, %1, %1"), AVar("distance", "sub\t%0, %1, %2\ndp3\t%0, %0, %0"), AVar("dst", "sub\t%0, %1, %2\ndp3\t%0, %0, %0")]
 
-def Error(message):
-    print("Error in " + scope + " line " + str(linenum) + "(" + typeOfExpr + "): " + message)
+scopeSnapshot = []
 
 def HVarNameToRegister(name):
-    #print(name)
+    print(name)
     allhvars = dhvars + hvars
     ext = ""
     if "." in name:
@@ -166,19 +173,42 @@ def GetOperands(string, dex):
     s = string.find(" ", dex)
     return [ string[max(string.rfind(" ", dex), 0):dex] , string[dex + 1:(s if s != -1 else len(string))]]
 
+modifs = [("saturate", "sat"), ("d2", "d2"), ("x2", "x2"), ("x4", "x4")]
+
+def GetFirstModif(string):
+    result = ""
+    dex = 999999999999
+    for m in modifs:
+        if m[0] + "(" in string:
+            if string.index(m[0] + "(") < dex:
+                result = m
+                dex = string.index(m[0] + "(")
+    return result
+            
+
 # Returns assembly code
 def CompileOperand(string, ext="", dst=""):
     string = string.strip()
     sembly = ""
-    ops = ["*mul", "-sub", "+add", ]
+    ops = ["*mul", "-sub", "+add"]
     reg = ""
     mathed = False
 
-    if "saturate(" in string:
-        dex = string.index("saturate(") + 9
-        end = GetParEnd(string, dex)
-        inner = string[dex:end]
-        return CompileOperand(inner, "_sat", dst)
+    while (m := GetFirstModif(string)):
+        #print(m, (m + "(") in string)
+        if (m[0] + "(") in string:
+            dex = string.index(m[0] + "(") + len(m[0]) + 1
+            end = GetParEnd(string, dex)
+            inner = string[dex:end]
+            #print(inner)
+            return CompileOperand(inner, "_" + m[1] + ext, dst)
+
+    if "?" in string:
+        dex = string.index("?") + 1
+        inner = string[dex:].split(":")
+        if dst == "":
+                dst = AllocateRegister()
+        return [dst, "cnd" + ext + "\t" + ", ".join([dst, "r0.a", HVarNameToRegister(inner[0].strip()), HVarNameToRegister(inner[1].strip())]) + "\n"]
     
     for av in avars:
         if av.name + "(" in string:
@@ -195,23 +225,45 @@ def CompileOperand(string, ext="", dst=""):
             for dex, item in enumerate(inner):
                 end = end.replace("%" + str(dex + 1), HVarNameToRegister(item))
             return [dst, end + "\n"]
-            
 
-    
+    string = string.replace("(", "").replace(")", "")
+            
+    if "/" in string:
+        if string[string.index("/") + 1:].strip() != "2":
+            Error("Dividing can only be done by 2. It has to be used like saturate() where it's an addon to a math expression or another function, such as (a + b) / 2")
+        return CompileOperand(string.split("/")[0].strip(), "_d2" + ext, dst)
+
+    if "*" in string:
+        val = string[string.rfind("*") + 1:].replace(" ", "")
+        
+        if val == "2":
+            ext = "_x2" + ext
+            mathed = True
+        elif val == "4":
+            ext = "_x4" + ext
+            mathed = True
+        if mathed:
+            return CompileOperand(string[:string.rfind("*")], ext, dst)
 
     for op in ops:
         if op[0] in string:
-            reg = dst
-            if reg == "":
-                reg = AllocateRegister()
+            if dst == "":
+                dst = AllocateRegister()
             these = string.split(op[0])
-            sembly += op[1:] + ext + "\t" + reg + ", " + HVarNameToRegister(these[0].strip()) + ", " + HVarNameToRegister(these[1].strip()) + "\n"
+            sembly += op[1:] + ext + "\t" + dst + ", " + HVarNameToRegister(these[0].strip()) + ", " + HVarNameToRegister(these[1].strip()) + "\n"
             mathed = True
             break
 
+    
+
     if not mathed:
-        return [HVarNameToRegister(string), ""]
-    return [reg, sembly]
+        val = HVarNameToRegister(string)
+        if dst == "":
+            dst = AllocateRegister()
+        if val != dst:
+            return [dst, "mov" + ext + "\t" + dst + ", " + val + "\n"]
+        return [dst, ""]
+    return [dst, sembly]
 
 def ArrangeMad(muls, adds):
     i = adds.index(muls[0], 1)
@@ -226,13 +278,45 @@ def RFind(haystack, needle, start=-1):
             if haystack[i:i+len(needle)] == needle:
                 return i
     return -1
-            
+
+isPixelShader = True
+
+maxR = 2
+maxT = 4
+maxV = 2
+maxC = 5
 
 # This function optimizes the assembly code that the compiler output.
 # It turns multiplies and adds into mads, and skips the middle man when a result is mov'd somewhere
 def SecondPass(script):
+    r0Read = 0
+    r1Read = 0
     tempScript = ""
     dex = 0
+
+    # Checking for shader validation
+    # Compilation in FO2 will fail if a temporary register (a variable in this case) is read from twice in a row without being written to.
+    for line in script.split("\n"):
+        args = [item.strip() for item in script[script.index("\t") + 1:].split(",")]
+        if any("r0" in item for item in args[1:]):
+            if r0Read:
+                Error("FO2 Warning: Shader validation will fail if a temporary register (" + HVarRegisterToName("r0") + " in this case) is read from twice in a row.")
+            else:
+                r0Read += 1
+
+        if "r0" in args[0]:
+            r0Read -= 1
+        
+        if any(("r1" in item) for item in args[1:]):
+            if r1Read:
+                Error("FO2 Warning: Shader validation will fail if a temporary register (" + HVarRegisterToName("r1") + " in this case) is read from twice in a row.")
+            else:
+                r1Read += 1
+
+        if "r1" in args[0]:
+                r1Read -= 1
+            
+    
     while (mdex := script.find("mul", dex)) != -1:
         mdex = script.index("mul", dex)
         tdex = script.index("\n", mdex)
@@ -288,25 +372,27 @@ def CompileHLSL(script, hv=-1):
     buffer = ""
     for char in script:
 
-        if liner:
-            if liner == 1:
-                if char != '\n': continue
-                liner = 0
-            else:
-                buffer += char
-                if buffer[-2:] != "*/": continue
-                liner = 0
-        if buffer:
-            if buffer[-1] == '/':
-                if char == '/':
-                    buffer = buffer[:-1]
-                    liner = 1
-                    continue
+        if mode:
+            if liner:
+                if liner == 1:
+                    if char != '\n': continue
+                    liner = 0
+                else:
+                    buffer += char
+                    if buffer[-2:] != "*/": continue
+                    liner = 0
 
-                if char == '*':
-                    buffer = buffer[:-1]
-                    liner = 1
-                    continue
+            if buffer:
+                if buffer[-1] == '/':
+                    if char == '/':
+                        buffer = buffer[:-1]
+                        liner = 1
+                        continue
+
+                    if char == '*':
+                        buffer = buffer[:-1]
+                        liner = 1
+                        continue
 
         if char == '\n':
             linenum += 1
@@ -314,14 +400,16 @@ def CompileHLSL(script, hv=-1):
 
         col += 1
 
-        if buffer[-4:-1] == "asm" and buffer[-1] not in "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ":
+        # Checking for assembly
+        if buffer[-4:-1] == "asm" and buffer[-1] in "\t\n {":
             buffer = ""
             mode = 0
             continue
 
         # Reading Assembly
-        if mode == 0:
+        if not mode:
             if char == "}":
+                print("Exited normally")
                 mode = 1
                 continue
 
@@ -330,6 +418,7 @@ def CompileHLSL(script, hv=-1):
             if output != "":
                 if (char in " \t\n") and (output[-1] == '\n'): continue
             output += char
+            continue
 
         # Reading Function
         elif mode == 2:
@@ -356,12 +445,6 @@ def CompileHLSL(script, hv=-1):
             if char in '\t\n':
                 continue
 
-            # Checking for assembly
-            if buffer[-3:] == "asm":
-                buffer = ""
-                mode = 0
-                continue
-
             if char == ';':
                 line = buffer
                 buffer = ""
@@ -382,8 +465,8 @@ def CompileHLSL(script, hv=-1):
                         # Defining a constant variable
                         if IsConst(line):
                             typeOfExpr = "Defining Constant"
-                            if constants > 32:
-                                Error("Too many constants defined, there can only be 32")
+                            if constants > 7:
+                                Error("Too many constants defined, there can only be 5, since the game reserves 3 of them")
                                 break
                             hvars.append(HVar(tokens[1], "c" + str(constants), line.split("=")[1].strip()))
                             constants += 1
@@ -419,21 +502,30 @@ def CompileHLSL(script, hv=-1):
                                     continue
 
                 else:
-                    match line.split(" ")[0]:
+                    tokens = line.split(" ")
+                    match tokens[0]:
                         case "return":
                             typeOfExpr = "Return"
-                            r = CompileOperand(line[7:])
+                            r = CompileOperand(line[7:], "", "r0")
                             
                             output += r[1]
-                            
-                            if r[0] != "r0":
+                            '''
+                            print("[" + r[0] + "]")
+                            if r[0].strip() != "r0":
                                 output += "mov\tr0, " + r[0]
+                            '''
                             continue
 
                     # Assigning pre-existing variable
-                    if line.split(" ")[1] == '=':
+                    if tokens[1] == '=':
                         typeOfExpr = "Assign"
-                        output += CompileOperand(line[line.index("=") + 1:], "", HVarNameToRegister(line.split(" ")[0].strip()))[1]
+                        if tokens[0].strip() not in hvars + dhvars:
+                            if IsConst(line):
+                                hvars.append(HVar(tokens[1], "c" + str(constants), line.split("=")[1].strip()))
+                                constants += 1
+                            else:
+                                hvars.append(HVar(tokens[1], AllocateRegister(), ""))
+                        output += CompileOperand(line[line.index("=") + 1:], "", HVarNameToRegister(tokens[0].strip()))[1]
 
             else:
                 buffer += char
@@ -505,7 +597,7 @@ while stuckInLoop:
                     for i, put in enumerate(inputs):
                         if " " in put.strip():
                             put = put.strip().split(" ")[1].strip()
-                        dhvars.append(HVar(put.strip(), "t" + str(i), "debug"))
+                        hvars.append(HVar(put.strip(), "t" + str(i), "debug"))
 
                 pixelshader = hlsl[hlsl.index("{", vdex) + 1 : hlsl.index("}", vdex)].strip()
             
@@ -522,7 +614,7 @@ while stuckInLoop:
                 sfile.write("///////////////////////////////////////////////////////////////////////////\n")
                 sfile.write("// Created on " + str(tstruct.tm_mon) + "/" + str(tstruct.tm_mday) + "/" + str(tstruct.tm_year) + " " + str((tstruct.tm_hour if tstruct.tm_hour < 13 else tstruct.tm_hour - 12)) + ":" + str(tstruct.tm_min).rjust(2, "0") + ":" + str(tstruct.tm_sec).rjust(2, "0") + " " + ("PM" if tstruct.tm_hour > 12 else "AM") + "\n")
                 sfile.write("//\n")
-                sfile.write("// Generated with Zack's HLSL-to-FlatOut-2-Pixel-Shader v1.1\n")
+                sfile.write("// Generated with Zack's HLSL-to-FlatOut-2-Pixel-Shader v1.2\n")
                 sfile.write("///////////////////////////////////////////////////////////////////////////\n")
 
                 for i in range(textures):
