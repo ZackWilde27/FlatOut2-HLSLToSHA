@@ -88,6 +88,8 @@ The supported intrinsic functions are as follows:
 - lerp()
 - saturate()
 - mad()
+- length()
+- distance() / dst()
 
 Saturate is the only function that can have math or other functions inside it, the rest have to be structured 'xyz = function()'
 
@@ -102,16 +104,39 @@ myVar = lerp(colour, dirt, lighting.a);
 
 ### Math
 
-There can only be 1 math expression in a line, but other than that its exactly how you'd expect, except there's no divide.
+There can only be 1 math expression in a line (except for a few cases), but other than that its exactly how you'd expect, except dividing can only be done by 2.
 
 For example:
 ```hlsl
 myVar = colour + specular;
 myVar *= lighting;
 myVar -= dirt;
+myVar = colour / 2;
 ```
 
 <br><br>
+
+### Modifiers
+
+Modifiers are addons to instructions, allowing you to do more in a single instruction. You're likely already familiar with saturate(), but there's more math related ones
+<br>
+- d2: divide the result by 2
+- x2: multiply the result by 2
+- x4: multiply the result by 4
+<br>
+Each of these math modifiers can be used in either function form, exactly like saturate, or in it's math expression form. This is the only case where 2 math expressions can be on one line.
+
+```hlsl
+myVar = d2(specular * FRESNEL);
+// or
+myVar = (specular * FRESNEL) / 2;
+
+myVar = x2(specular * FRESNEL);
+// or
+my Var = specular * FRESNEL * 2;
+```
+
+<br>
 
 ### Splitting Vectors
 
