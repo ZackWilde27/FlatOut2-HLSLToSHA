@@ -71,7 +71,7 @@ float4 var2 = lerp(var1, dirt, specular.a);
 float4 var3 = dirt; // This will cause issues or fail to compile
 ```
 
-Though, you can have up to 29 constants, which can hold misc. data for use in the shader (It's actually 32 but the game reserves the first 3)
+Though, you can have up to 5 constants, which can hold misc. data for use in the shader (It's actually 8 (I don't know where I got 32, whoops), but the game reserves the first 3)
 ```hlsl
 float4 const1 = float4(0.0f, 0.0f, 1.0f, 1.0f);
 float4 const2 = float4(1.0f, 1.0f, 1.0f, 1.0f);
@@ -167,4 +167,4 @@ There are some very specific limitations with the assembly [which are documented
 
 <br>
 
-If it fails the only error message you will get says "Failed to create effect" with no explanation, but the error message exists in the game's memory. Using cheat engine if you search for the string "X error" you will find all of the compiler errors.
+If it fails the only error message you'll get is "Failed to create effect" with no explanation, but the error message exists in the game's memory. Using cheat engine if you search for the string "X error" you will find all of the compiler errors.
