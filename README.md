@@ -138,6 +138,20 @@ my Var = specular * FRESNEL * 2;
 
 <br>
 
+### If statements
+
+An if statement is technically possible, but it's extremely limited.
+```hlsl
+float4 var1 = colour;
+float4 var2 = ? AMBIENT : SHADOW;
+
+// The comparison being done here is ((the first variable).a > 0.5), in the case above it's 'var1'
+// So it's essentially:
+//var2 = (var1.a > 0.5) ? AMBIENT : SHADOW;
+```
+
+<br>
+
 ### Splitting Vectors
 
 In ps.1.1, splitting can only be done if it's the alpha channel
