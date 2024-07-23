@@ -71,7 +71,7 @@ float4 var2 = lerp(var1, dirt, specular.a);
 float4 var3 = dirt; // This will cause issues or fail to compile
 ```
 
-Though, you can have up to 5 constants, which can hold misc. data for use in the shader (It's actually 8 (I don't know where I got 32, whoops), but the game reserves the first 3)
+Though, you can have up to 5 constants, which can hold misc. data for use in the shader (It's actually 8, but the game reserves the first 3)
 ```hlsl
 float4 const1 = float4(0.0f, 0.0f, 1.0f, 1.0f);
 float4 const2 = float4(1.0f, 1.0f, 1.0f, 1.0f);
@@ -133,7 +133,10 @@ myVar = (specular * FRESNEL) / 2;
 
 myVar = x2(specular * FRESNEL);
 // or
-my Var = specular * FRESNEL * 2;
+myVar = specular * FRESNEL * 2;
+
+// Also, they can be stacked, and in any order
+myVar = x2(d2(saturate(x4(specular * FRESNEL))));
 ```
 
 <br>
@@ -192,11 +195,12 @@ float4 PixelShader(float4 colour, float4 specular, float4 dirt, float4 lighting)
 
 <br><br>
 
-Bonus tip: Type doesn't really matter when defining the return value and type of the inputs, so they are optional
+Bonus tip: Type doesn't really matter because everything is a float4 so it's all optional
 ```hlsl
 PixelShader(colour, specular, dirt, lighting)
 {
-    float4 c = specular * FRESNEL;
+    brightness = float4(0.0f, 0.0f, 0.0f, 0.75f);
+    c = specular * FRESNEL;
     //...
 }
 ```
@@ -206,4 +210,4 @@ There are some very specific limitations with the assembly [which are documented
 
 <br>
 
-If it fails the only error message you'll get is "Failed to create effect" with no explanation, but the error message exists in the game's memory. Using cheat engine if you search for the string "X error" you will find all of the compiler errors.
+If the game fails the only error message you'll get is "Failed to create effect" with no explanation, but the error message exists in the game's memory. Using cheat engine if you search for the string "X error" you will find all of the compiler errors.
