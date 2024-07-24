@@ -28,6 +28,7 @@ float4 PixelShader()
   // All code in here will end up in the pixel shader of the SHA file
 }
 ```
+It can be called PixelShader, psMainD3D9, or just psMain
 
 The inputs of the PixelShader function corrospond to texture samples, so to output the first texture:
 ```hlsl
@@ -88,8 +89,6 @@ The supported intrinsic functions are as follows:
 - lerp()
 - saturate()
 - mad()
-- length()
-- distance() / dst()
 
 Saturate is the only function that can have math or other functions inside it, the rest have to be structured 'xyz = function()'
 
@@ -120,9 +119,9 @@ myVar = colour / 2;
 
 Modifiers are addons to instructions, allowing you to do more in a single instruction. You're likely already familiar with saturate(), but there's more math related ones
 <br>
-- d2: divide the result by 2
-- x2: multiply the result by 2
-- x4: multiply the result by 4
+- d2 : divide the result by 2
+- x2 : multiply the result by 2
+- x4 : multiply the result by 4
 <br>
 Each of these math modifiers can be used in either function form, exactly like saturate, or in it's math expression form. This is the only case where 2 math expressions can be on one line.
 
@@ -155,6 +154,25 @@ float4 var2 = ? AMBIENT : SHADOW;
 
 <br>
 
+### Functions
+In the pixel shader, there's no way to call functions, so these are defines that can have multiple lines, as-in they will copy+paste the code inside.
+
+```hlsl
+float4 psMainD3D9(float4 colour, float4 specular)
+{
+  float4 myDot(a, b)
+  {
+    a = colour * b;
+    return dot(a, b);
+  }
+
+  return myDot(colour, specular);
+}
+```
+
+
+<br>
+
 ### Splitting Vectors
 
 In ps.1.1, splitting can only be done if it's the alpha channel
@@ -168,6 +186,19 @@ myVar = SHADOW.x; // The game can't compile this
 Using z/b is possible, but only when the destination is the alpha channel
 ```hlsl
 myVar.a = SHADOW.z;
+```
+
+<br><br>
+
+### Assembly
+
+The ```asm``` keyword can be used to insert assembly if you absolutely have to
+```hlsl
+float4 myVar = colour;
+asm
+{
+  mov r0, t0
+}
 ```
 
 <br><br>
@@ -195,12 +226,12 @@ float4 PixelShader(float4 colour, float4 specular, float4 dirt, float4 lighting)
 
 <br><br>
 
-Bonus tip: Type doesn't really matter because everything is a float4 so it's all optional
+Bonus tip: The return value and all of the parameters are always float4 so the type is optional.
 ```hlsl
 PixelShader(colour, specular, dirt, lighting)
 {
-    brightness = float4(0.0f, 0.0f, 0.0f, 0.75f);
-    c = specular * FRESNEL;
+    float4 brightness = float4(0.0f, 0.0f, 0.0f, 0.75f);
+    float4 c = specular * FRESNEL;
     //...
 }
 ```
