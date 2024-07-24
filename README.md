@@ -166,7 +166,10 @@ float4 psMainD3D9(float4 colour, float4 specular)
     return dot(a, b);
   }
 
-  return myDot(colour, specular);
+  // It's supposed to be possible to write to a texture register in the pixel shader but in my experience the game doesn't compile it
+  float4 myVar = colour;
+
+  return myDot(myVar, specular);
 }
 ```
 
