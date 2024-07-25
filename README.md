@@ -1,5 +1,5 @@
 # Zack's High Level Shader Language (HLSL) To FlatOut Shader (SHA)
-It's a python script that converts the HLSL script into assembly and creates an SHA file from it for use in FlatOut 1 or 2.
+It's a python script that converts an HLSL script into assembly and creates an SHA file from it for use in FlatOut 1 or 2.
 <br>
 *(It was originally made for 2 but I checked and the first game uses the exact same format)*
 
@@ -38,7 +38,7 @@ float4 PixelShader(float4 tex0)
 }
 ```
 
-The type of texture that it corrosponds to is determined by the original shader that you are overriding.
+The type of texture is determined by the original shader that you are overriding.
 
 The original car body shader's textures are arranged like so in the original file:
 ```
@@ -90,13 +90,14 @@ The supported intrinsic functions are as follows:
 - saturate()
 - mad()
 
-Saturate is the only function that can have math or other functions inside it, the rest have to be structured 'xyz = function()'
+Saturate is the only function that can have math or other functions inside it, the rest have to be structured ```xyz = function()``` or ```return function()```
 
 For example:
 ```hlsl
 float4 myVar = dot(colour, specular);
 myVar = saturate(mad(dirt, specular, lighting));
 myVar = lerp(colour, dirt, lighting.a);
+return dot(specular, dirt);
 ```
 
 <br><br>
@@ -147,7 +148,7 @@ An if statement is technically possible, but it's extremely limited.
 float4 var1 = colour;
 float4 var2 = ? AMBIENT : SHADOW;
 
-// The comparison being done here is ((the first variable).a > 0.5), in the case above it's 'var1'
+// The comparison being done here is (r0.a > 0.5), r0 is your first variable, so in this case it'd be var1
 // So it's essentially:
 //var2 = (var1.a > 0.5) ? AMBIENT : SHADOW;
 ```
@@ -156,7 +157,7 @@ float4 var2 = ? AMBIENT : SHADOW;
 
 ### Functions
 In the pixel shader, there's no way to call functions, so these are defines that can have multiple lines, as-in they will copy+paste the code inside.
-
+All functions have to return a value, because it has to be structured just like the instrinsic functions
 ```hlsl
 float4 psMainD3D9(float4 colour, float4 specular)
 {
@@ -239,8 +240,23 @@ PixelShader(colour, specular, dirt, lighting)
 }
 ```
 
+<br><br>
+
 # Troubleshooting
 There are some very specific limitations with the assembly [which are documented here](https://learn.microsoft.com/en-us/windows/win32/direct3dhlsl/dx9-graphics-reference-asm-ps-1-x), so even though the HLSL may compile fine, that doesn't mean FlatOut 2 will be able to compile it.
+
+<br><br>
+
+Here's what I know so far:
+
+<br>
+
+The r registers (the variables in HLSL) cannot be read from twice in a row, this is a software limitation imposed by the game, I don't know why outside of security maybe.
+```hlsl
+float4 var1 = specular * FRESNEL;
+float4 var2 = var1;
+var2 = var1; // The game can't compile this, you need to write to var1 before reading again
+```
 
 <br>
 
