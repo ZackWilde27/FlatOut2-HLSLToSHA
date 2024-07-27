@@ -69,7 +69,7 @@ You can only have 2 variables, because there's 2 registers to hold values
 ```hlsl
 float4 var1 = colour + specular;
 float4 var2 = lerp(var1, dirt, specular.a);
-float4 var3 = dirt; // This will cause issues or fail to compile
+float4 var3 = dirt; // This will be treated as var2, overwriting the previous lerp
 ```
 
 Though, you can have up to 5 constants, which can hold misc. data for use in the shader (It's actually 8, but the game reserves the first 3)
@@ -260,4 +260,4 @@ var2 = var1; // The game can't compile this, you need to write to var1 before re
 
 <br>
 
-If the game fails the only error message you'll get is "Failed to create effect" with no explanation, but the error message exists in the game's memory. Using cheat engine if you search for the string "X error" you will find all of the compiler errors.
+If the game fails the only error message you'll get is "Failed to create effect" with no explanation, but the error message exists in the game's memory. Using cheat engine if you search for the string "error X" you will find all of the compiler errors.
