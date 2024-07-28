@@ -243,7 +243,7 @@ static void CheckForErrors()
 
     LPD3DXEFFECT pEffect;
     LPD3DXBUFFER errors;
-    D3DXCreateEffect(d3dDevice, shader, shaderLength, NULL, NULL, 0, NULL, &pEffect, &errors);
+    D3DXCreateEffect(d3dDevice, shader, shaderLength, NULL, NULL, D3DXSHADER_USE_LEGACY_D3DX9_31_DLL, NULL, &pEffect, &errors);
 
     UINT messageType = MB_ICONINFORMATION;
     if (errors)
