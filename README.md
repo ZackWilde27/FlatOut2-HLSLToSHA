@@ -260,4 +260,6 @@ var2 = var1; // The game can't compile this, you need to write to var1 before re
 
 <br>
 
-If the game fails the only error message you'll get is "Failed to create effect" with no explanation, but the error message exists in the game's memory. Using cheat engine if you search for the string "error X" you will find all of the compiler errors.
+Use ```ZacksShaderValidator.exe``` to check if the shader will run in-game.
+
+Clicking 'Validate SHA' will prompt you for an SHA file to validate, then show the errors in a message box.
