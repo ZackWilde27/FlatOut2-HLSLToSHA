@@ -5,6 +5,8 @@ I've updated the ShaderValidator to remove errors about support when using this 
 
 My compiler takes a lot of the game's assumptions into account to make writing shaders easier, but if you want standard HLSL, I just thought I'd mention it right off the bat.
 
+<br>
+
 # Zack's High Level Shader Language (HLSL) To FlatOut Shader (SHA)
 It's a python script that converts an HLSL script into assembly and creates an SHA file from it for use in FlatOut 1 or 2.
 <br>
