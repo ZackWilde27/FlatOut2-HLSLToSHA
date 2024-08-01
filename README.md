@@ -1,9 +1,7 @@
 ### I learned that you can put HLSL in the shader file
-Replace ```PixelShader = <pSdr>``` with ```PixelShader = compile ps_1_1 ShaderName()``` to use the game's compiler
+I made a page explaining it [here](https://github.com/ZackWilde27/FlatOut2-HLSLToSHA/wiki/Putting-HLSL-in-the-shader-file)
 
-I've updated the ShaderValidator to remove errors about support when using this method
-
-My compiler takes a lot of the game's assumptions into account to make writing shaders easier, but if you want standard HLSL, I just thought I'd mention it right off the bat.
+I've tried to make my version the easier way to write shaders, but if you want standard HLSL, I just thought I'd mention it right off the bat.
 
 <br>
 
@@ -270,6 +268,8 @@ Lastly, there are some special constants that the game uses, those can be access
 
 # Writing the Vertex Shader
 
+Math, function, and assembly syntax is exactly the same as the pixel shader, so I won't go over those
+
 ### Returning
 Normally the vertex shader is a void function, but since you have to write to the position register at some point, I made that the return value.
 
@@ -307,9 +307,9 @@ float4 const2 = float4(1.0f, 1.0f, 1.0f, 1.0f);
 The supported intrinsic functions are as follows:
 - distance() / dst()
 - dot()
-- exp2()
+- exp2() (exp2_full() to use the accurate but expensive version)
 - frac()
-- log2()
+- log2() (log2_full() to use the accurate but expensive version)
 - mad()
 - max()
 - min()
@@ -375,10 +375,10 @@ myVar = AMBIENT.yzx * myVar.yxz;
 
 So in summary I can write a car body shader like this:
 ```hlsl
-float4 VertexShader(float3 pos : POSITION, float3 nrm : NORMAL, float4 diff : COLOR, float2 uv : TEXCOORD)
+float4 VertexShader(float3 pos : POSITION, float3 nrm : NORMAL, float4 diff : COLOR, float2 uvs : TEXCOORD)
 {
-  colour.uv = TEXCOORD.xy;
-  dirt.uv = TEXCOORD.xy;
+  colour.uv = uvs.xy;
+  dirt.uv = uvs.xy;
 
   lighting.xyz = LocalToWorld(nrm);
   // TODO: re-write the refl() instruction
