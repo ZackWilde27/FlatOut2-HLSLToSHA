@@ -349,7 +349,7 @@ For example:
 ```hlsl
 float4 VertexShader(float3 pos : POSITION, float3 nrm : NORMAL, float2 uvs : TEXCOORD)
 {
-  colour.uv = TEXCOORD.xy;
+  colour.uv = uvs.xy;
 
   // Cubemaps use a direction as the coordinates instead of the given UVs
   // For a specular map especially, you'll want to calculate the reflection vector
