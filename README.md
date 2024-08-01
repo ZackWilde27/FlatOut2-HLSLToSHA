@@ -13,11 +13,24 @@ It's a python script that converts an HLSL script into assembly and creates an S
 <br>
 
 ## Using the Script
-<br>
+
+
 At the start it'll prompt you for an HLSL file to convert. The resulting shader file will be in the same spot with the same name, just with the .sha extension.
+
 <br>
-<br>
+
 The script also has the option to run in a loop, so that when it detects the file has changed, it'll automatically recompile. Useful for debugging, and maybe other things too.
+
+<br>
+
+The script will create a ```settings.txt``` file when launching for the first time
+```
+filename =
+authors =
+// loop can be True/False, 0/1, Yes/No, or y/N
+loop = 
+```
+Leaving them blank means that it will ask you when the script runs, so you can set it up to ask you every question or none at all.
 
 <br><br>
 
@@ -381,7 +394,7 @@ float4 VertexShader(float3 pos : POSITION, float3 nrm : NORMAL, float4 diff : CO
   dirt.uv = uvs.xy;
 
   lighting.xyz = LocalToWorld(nrm);
-  // TODO: re-write the refl() instruction
+  // TODO: re-write HLSL's refl()
   specular.xyz = mySuperAwesomeReflectFunction();
 
   return WorldToView(pos);
