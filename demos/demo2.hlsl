@@ -1,11 +1,11 @@
 // The actually serious shader
 
 // The vertex shader can be called VertexShader, vsMainD3D9, vsMain, or just main
-float4 vsMainD3D9(float3 pos : POSITION, float3 nrm : NORMAL, float2 uv : TEXCOORD)
+float4 vsMainD3D9(float3 pos : POSITION, float3 nrm : NORMAL, float2 uvs : TEXCOORD)
 {
     // The UVs are just passed through to 2D textures
-    colour.uv = TEXCOORD.xy;
-    dirt.uv = TEXCOORD.xy;
+    colour.uv = uvs.xy;
+    dirt.uv = uvs.xy;
 
     // Cubemaps use a direction to sample the texture instead of x and y.
     lighting.xyz = LocalToWorld(nrm);
