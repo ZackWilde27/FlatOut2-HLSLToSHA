@@ -14,10 +14,6 @@ It's a python script that converts an HLSL script into assembly and creates an S
 
 <br>
 
-Right now it only supports writing pixel shaders, vertex shader support is still being worked on
-
-<br>
-
 ## Using the Script
 <br>
 At the start it'll prompt you for an HLSL file to convert. The resulting shader file will be in the same spot with the same name, just with the .sha extension.
@@ -27,17 +23,18 @@ The script also has the option to run in a loop, so that when it detects the fil
 
 <br><br>
 
-## HLSL
+# HLSL
 
-### The Pixel Shader
-The main thing you need is to define the PixelShader function, like so:
+## Defining the Pixel Shader
+The pixel shader function can be called PixelShader, psMainD3D9, or just psMain
+
+It returns the final colour of the pixel
 ```hlsl
 float4 PixelShader()
 {
   // All code in here will end up in the pixel shader of the SHA file
 }
 ```
-It can be called PixelShader, psMainD3D9, or just psMain
 
 The inputs of the PixelShader function corrospond to texture samples, so to output the first texture:
 ```hlsl
@@ -68,7 +65,47 @@ float4 PixelShader(float4 colour, float4 specular, float4 dirt, float4 lighting)
 ```
 
 <br>
+
+## Defining the Vertex Shader
+The vertex shader can be called VertexShader, vsMainD3D9, vsMain, or just main
+
+It returns the position of the vertex in view space
+```hlsl
+float4 VertexShader()
+{
+  // All code in here will end up in the vertex shader of the SHA file
+}
+```
+
+These inputs require type and semantics, as it's up to you which inputs are given to the shader.
+
+The syntax for the inputs is ```type``` ```name``` : ```semantic```
+
+The semantics are:
+- POSITION or SV_Position
+- NORMAL
+- COLOR or SV_Target
+- TEXCOORD (this one can have an index at the end like TEXCOORD0 or TEXCOORD1)
+
+For example:
+```hlsl
+float4 VertexShader(float3 pos : POSITION, float3 nrm : NORMAL, float2 uv : TEXCOORD)
+{
+
+}
+
+// or
+
+float4 VertexShader(float3 pos : POSITION, float2 uv1 : TEXCOORD0, float2 uv2 : TEXCOORD1)
+{
+
+}
+```
 <br>
+<br>
+
+
+# Writing the Pixel Shader
 
 ### Variables
 
@@ -89,7 +126,6 @@ float4 const2 = float4(1.0f, 1.0f, 1.0f, 1.0f);
 ```
 
 <br>
-<br>
 
 ### Intrinsic Functions
 
@@ -109,7 +145,7 @@ myVar = lerp(colour, dirt, lighting.a);
 return dot(specular, dirt);
 ```
 
-<br><br>
+<br>
 
 ### Math
 
@@ -123,7 +159,7 @@ myVar -= dirt;
 myVar = colour / 2;
 ```
 
-<br><br>
+<br>
 
 ### Modifiers
 
@@ -143,6 +179,12 @@ myVar = (specular * FRESNEL) / 2;
 myVar = x2(specular * FRESNEL);
 // or
 myVar = specular * FRESNEL * 2;
+
+// I also gave them more natural names like saturate(), but you can still use the other ones
+// half() == d2()
+// double() == x2()
+// quad() == x4()
+myVar = half(specular * fresnel)
 
 // Also, they can be stacked, and in any order
 myVar = x2(d2(saturate(x4(specular * FRESNEL))));
@@ -201,7 +243,7 @@ Using z/b is possible, but only when the destination is the alpha channel
 myVar.a = SHADOW.z;
 ```
 
-<br><br>
+<br>
 
 ### Assembly
 
@@ -214,7 +256,7 @@ asm
 }
 ```
 
-<br><br>
+<br>
 
 Lastly, there are some special constants that the game uses, those can be accessed with keywords
 - SHADOW : The shadow mask of the track
@@ -222,8 +264,130 @@ Lastly, there are some special constants that the game uses, those can be access
 - FRESNEL : Fresnel term
 - BLEND : The car body shaders use a texture to blend between clean and dirt
 
+<br><br>
+
+<br><br>
+
+# Writing the Vertex Shader
+
+### Returning
+Normally the vertex shader is a void function, but since you have to write to the position register at some point, I made that the return value.
+
+```hlsl
+float4 VertexShader(float3 pos : POSITION)
+{
+  return pos.xyzz;
+}
+```
+
+<br>
+
+### Variables
+
+You can have up to 12 variables, because there's 12 registers to hold values
+```hlsl
+float4 var1 = pos + nrm;
+float4 var2 = dot(nrm, diff);
+float4 var3 = nrm;
+float4 var4 = specular;
+//...
+```
+
+Also, you can have up to 88 constants, which can hold misc. data for use in the shader (It's actually 96, but the game reserves the first 8)
+```hlsl
+float4 const1 = float4(0.0f, 0.0f, 1.0f, 1.0f);
+float4 const2 = float4(1.0f, 1.0f, 1.0f, 1.0f);
+//...
+```
+
+<br>
+
+### Intrinsic Functions
+
+The supported intrinsic functions are as follows:
+- distance() / dst()
+- dot()
+- exp2()
+- frac()
+- log2()
+- mad()
+- max()
+- min()
+- rsqrt()
+- rcp()
+- saturate()
+
+Saturate is the only function that can have math or other functions inside it, the rest have to be structured ```xyz = function()``` or ```return function()```
+
+For example:
+```hlsl
+float4 myVar = dot(colour, specular);
+myVar = saturate(mad(dirt, specular, lighting));
+myVar = max(colour, dirt);
+return dot(specular, dirt);
+```
+
+<br>
+
+### Textures
+The vertex shader needs to give each texture its UV coordinates. It's name is the same as defined in the pixel shader, and to load the coordinates use ```tex.uv = ```
+
+For example:
+```hlsl
+float4 VertexShader(float3 pos : POSITION, float3 nrm : NORMAL, float2 uvs : TEXCOORD)
+{
+  colour.uv = TEXCOORD.xy;
+
+  // Cubemaps use a direction as the coordinates instead of the given UVs
+  // For a specular map especially, you'll want to calculate the reflection vector
+  specular.xyz = nrm;
+}
+
+float4 PixelShader(float4 colour, float4 specular)
+{
+
+}
+```
+
+<br>
+
+### Transforming
+The game supplies 2 matrixes for you to transform with, and to make the whole thing simpler I made them functions:
+
+```hlsl
+float4 var2 = LocalToWorld(pos);
+float4 var1 = WorldToView(pos);
+```
+
+<br>
+
+### Splitting Vectors
+
+In vs.1.1, splitting/swizzling is a lot less restrictive.
+```hlsl
+myVar.zyx = SHADOW.xyz;
+myVar = AMBIENT.yzx * myVar.yxz;
+```
+
+<br><br>
+
+<br><br>
+
 So in summary I can write a car body shader like this:
 ```hlsl
+float4 VertexShader(float3 pos : POSITION, float3 nrm : NORMAL, float4 diff : COLOR, float2 uv : TEXCOORD)
+{
+  colour.uv = TEXCOORD.xy;
+  dirt.uv = TEXCOORD.xy;
+
+  lighting.xyz = LocalToWorld(nrm);
+  // TODO: re-write the refl() instruction
+  specular.xyz = mySuperAwesomeReflectFunction();
+
+  return WorldToView(pos);
+}
+
+
 float4 PixelShader(float4 colour, float4 specular, float4 dirt, float4 lighting)
 {
     float4 brightness = float4(0.0f, 0.0f, 0.0f, 0.75f); // a = ambient multiplier
@@ -239,35 +403,25 @@ float4 PixelShader(float4 colour, float4 specular, float4 dirt, float4 lighting)
 
 <br><br>
 
-Bonus tip: The return value and all of the parameters are always float4 so the type is optional.
+Bonus tip: The return value is always float4 so it's optional.
 ```hlsl
-PixelShader(colour, specular, dirt, lighting)
+VertexShader(float3 pos : POSITION)
 {
-    float4 brightness = float4(0.0f, 0.0f, 0.0f, 0.75f);
-    float4 c = specular * FRESNEL;
     //...
 }
+
+// For the pixel shader, the parameters don't need the type either since it's always float4
+PixelShader(colour, specular, dirt, lighting)
+{
+
+}
 ```
+
 
 <br><br>
 
 # Troubleshooting
 There are some very specific limitations with the assembly [which are documented here](https://learn.microsoft.com/en-us/windows/win32/direct3dhlsl/dx9-graphics-reference-asm-ps-1-x), so even though the HLSL may compile fine, that doesn't mean FlatOut 2 will be able to compile it.
-
-<br><br>
-
-Here's what I know so far:
-
-<br>
-
-The r registers (the variables in HLSL) cannot be read from twice in a row, this is a software limitation imposed by the game, I don't know why outside of security maybe.
-```hlsl
-float4 var1 = specular * FRESNEL;
-float4 var2 = var1;
-var2 = var1; // The game can't compile this, you need to write to var1 before reading again
-```
-
-<br>
 
 Use ```ZacksShaderValidator.exe``` to check if the shader will run in-game.
 
