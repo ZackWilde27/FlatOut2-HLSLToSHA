@@ -1,5 +1,5 @@
-# Zack's HLSL to FlatOut 2 ps.1.1 Assembly Converter
-# Version 1.4
+# Zack's HLSL to FlatOut SHA
+# Version 1.5
 
 try:
     from tkinter import filedialog
@@ -112,7 +112,7 @@ avars = [AVar("dot", "dp3\t%0, %1, %2"), AVar("lerp", "lrp\t%0, %3, %1, %2"), AV
 def ResetDHVars(isPS=isPixelShader):
     global dhvars
     dhvars = dhvars[dhvars.index("%split%"):]
-    dhvars = ([HVar("SHADOW", "c2", "", "4"), HVar("AMBIENT", "v0", "", "3"), HVar("FRESNEL", "v0.a", "", "1"), HVar("BLEND", "v1.a", "", "1")] if isPS else [HVar("LOCAL_TO_WORLD_MATRIX", "c4", "", "4x4"), HVar("WORLD_TO_VIEW_MATRIX", "c0", "", "4x4")]) + dhvars
+    dhvars = ([HVar("SHADOW", "c2", "", "4"), HVar("AMBIENT", "v0", "", "3"), HVar("FRESNEL", "v0.a", "", "1"), HVar("BLEND", "v1.a", "", "1"), HVar("EXTRA", "v1", "", "3")] if isPS else [HVar("FRESNEL", "oD0.a", "", "1"), HVar("AMBIENT", "oD0.xyz", "", "3"), HVar("BLEND", "oD1.a", "", "1"), HVar("EXTRA", "oD1.xyz", "", "3")]) + dhvars
 
 def PSTexToVSTex():
     for dhvar in dhvars:
@@ -122,7 +122,7 @@ def PSTexToVSTex():
 
 def ResetAVars(isPS=isPixelShader):
     global avars
-    avars = [AVar("dot", "dp3\t%0, %1, %2"), AVar("lerp", "lrp\t%0, %3, %1, %2"), AVar("mad", "mad\t%0, %1, %2, %3")] if isPS else [AVar("dot", "dp3\t%0, %1, %2"), AVar("dot3", "dp3\t%0, %1, %2"), AVar("dot4", "dp4\t%0, %1, %2"), AVar("mad", "mad\t%0, %1, %2, %3"), AVar("exp2", "expp\t%0, %1"), AVar("exp2_full", "exp\t%0, %1"), AVar("frac", "frc\t%0, %1"), AVar("max", "max\t%0, %1, %2"), AVar("min", "min\t%0, %1, %2"), AVar("log2", "logp\t%0, %1"), AVar("log2_full", "log\t%0, %1"), AVar("rcp", "rcp\t%0,%1"), AVar("rsqrt", "rsq\t%0, %1"), AVar("distance", "dst\t%0, %1"), AVar("dst", "dst\t%0, %1"), AVar("abs", "mul\t%0, %1, %1"), AVar("LocalToWorld", "m4x4\t%0, %1, c0"), AVar("WorldToView", "m3x3\t%0, %1, c4")]
+    avars = [AVar("dot", "dp3\t%0, %1, %2"), AVar("lerp", "lrp\t%0, %3, %1, %2"), AVar("mad", "mad\t%0, %1, %2, %3")] if isPS else [AVar("dot", "dp3\t%0, %1, %2"), AVar("dot3", "dp3\t%0, %1, %2"), AVar("dot4", "dp4\t%0, %1, %2"), AVar("mad", "mad\t%0, %1, %2, %3"), AVar("exp2", "expp\t%0, %1"), AVar("exp2_full", "exp\t%0, %1"), AVar("frac", "frc\t%0, %1"), AVar("max", "max\t%0, %1, %2"), AVar("min", "min\t%0, %1, %2"), AVar("log2", "logp\t%0, %1"), AVar("log2_full", "log\t%0, %1"), AVar("rcp", "rcp\t%0,%1"), AVar("rsqrt", "rsq\t%0, %1"), AVar("distance", "dst\t%0, %1"), AVar("dst", "dst\t%0, %1"), AVar("abs", "mul\t%0, %1, %1"), AVar("LocalToWorld", "m3x3\t%0, %1, c4"), AVar("WorldToView", "m4x4\t%0, %1, c0")]
 
 # You can have both HLSL defines and Assembly defines.
 # HLSL defines get replaced before being compiled in HLSL. Assembly defines allow you to add your own entries to avars.
@@ -138,12 +138,17 @@ def HandleProperty(prop):
 def HVarNameToRegister(name):
     allhvars = dhvars + hvars
     ext = ""
+    prefix = ""
     if "." in name:
         ext = "." + HandleProperty(name.split(".")[1].strip())
         name = name.split(".")[0].strip()
 
+    if "-" in name:
+        prefix = name[:name.index("-") + 1]
+        name = name[name.index("-") + 1:]
+
     if name in allhvars:
-        return allhvars[allhvars.index(name)].register + ext
+        return prefix + allhvars[allhvars.index(name)].register + ext
     Error("Unknown Variable: [" + name + "]")
     return ""
 
@@ -234,7 +239,7 @@ def AddConstant(name, value):
 def CompileOperand(string, ext="", dst=""):
     string = string.strip()
     sembly = ""
-    ops = ["*mul", "-sub", "+add"]
+    ops = ["*mul", "+add", "-sub"]
     reg = ""
     mathed = False
 
@@ -293,14 +298,13 @@ def CompileOperand(string, ext="", dst=""):
             return [dst, end + "\n"]
 
     string = string.replace("(", "").replace(")", "")
-            
-    
 
     for op in ops:
         if op[0] in string:
             if dst == "":
                 dst = AllocateRegister()
-            these = string.split(op[0])
+            these = [string[:string.index(op[0])], string[string.index(op[0]) + 1:]]
+            if op[0] == "-" and these[0].strip() in ["", "1"]: continue
             sembly += op[1:] + ext + "\t" + dst + ", " + HVarNameToRegister(these[0].strip()) + ", " + HVarNameToRegister(these[1].strip()) + "\n"
             mathed = True
             break
@@ -724,7 +728,7 @@ while stuckInLoop:
                 sfile.write("//\n")
                 sfile.write("// Authors: " + author + "\n")
                 sfile.write("//\n")
-                sfile.write("// Generated with Zack's HLSL-to-FlatOut-Shader v1.4\n")
+                sfile.write("// Generated with Zack's HLSL-to-FlatOut-Shader v1.5\n")
                 sfile.write("///////////////////////////////////////////////////////////////////////////\n")
 
                 for i in range(textures):
@@ -764,7 +768,7 @@ while stuckInLoop:
                 if vertexshader != "":
                     scope = "Vertex Shader"
                     isPixelShader = False
-                    constants = 8
+                    constants = 32
                     ResetAVars(False)
                     dhvars = [item for item in psSnapshot]
                     psSnapshot = [item for item in hvars]

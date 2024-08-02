@@ -1,6 +1,6 @@
 // The most basic shader possible
 
-float4 VertexShader(float3 pos : POSITION)
+VertexShader(float3 pos : POSITION)
 {
     return WorldToView(pos);
 }
