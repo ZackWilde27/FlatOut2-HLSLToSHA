@@ -168,6 +168,10 @@ myVar = colour + specular;
 myVar *= lighting;
 myVar -= dirt;
 myVar = colour / 2;
+
+myVar = -colour;
+// You can also do 1-x
+myVar = 1-colour * 1-specular;
 ```
 
 <br>
@@ -274,6 +278,7 @@ Lastly, there are some special constants that the game uses, those can be access
 - AMBIENT : Ambient lighting
 - FRESNEL : Fresnel term
 - BLEND : The car body shaders use a texture to blend between clean and dirt
+- EXTRA : From what I can tell it's either unused or a duplicate of something else
 
 <br><br>
 
@@ -306,7 +311,7 @@ float4 var4 = specular;
 //...
 ```
 
-Also, you can have up to 88 constants, which can hold misc. data for use in the shader (It's actually 96, but the game reserves the first 8)
+Also, you can have up to 64 constants, which can hold misc. data for use in the shader (It's actually 96, but the game can reserve anywhere from 8 to 32 depending on the shader)
 ```hlsl
 float4 const1 = float4(0.0f, 0.0f, 1.0f, 1.0f);
 float4 const2 = float4(1.0f, 1.0f, 1.0f, 1.0f);
@@ -360,6 +365,19 @@ float4 PixelShader(float4 colour, float4 specular)
 {
 
 }
+```
+
+<br>
+
+### Colour Registers
+FRESNEL, BLEND, AMBIENT and EXTRA can be given values in the vertex shader which will be interpolated to get the value for the pixel shader.
+```hlsl
+// In a custom shader, this means you have 2 scalar values and 2 colour values to pass to the pixel shader
+FRESNEL = uvs.x;
+BLEND = uvs.y;
+
+AMBIENT = nrm.xyz;
+EXTRA = nrm.xyz;
 ```
 
 <br>
