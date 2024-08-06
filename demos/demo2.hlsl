@@ -4,8 +4,8 @@
 float4 vsMainD3D9(float3 pos : POSITION, float3 nrm : NORMAL, float4 diff : COLOR, float2 uv : TEXCOORD)
 {
     // The UVs are just passed through to 2D textures
-    colour.uv = TEXCOORD.xy;
-    dirt.uv = TEXCOORD.xy;
+    colour.uv = uv.xy;
+    dirt.uv = uv.xy;
 
     // Cubemaps use a direction to sample the texture instead of x and y.
     lighting.xyz = LocalToWorld(nrm);
