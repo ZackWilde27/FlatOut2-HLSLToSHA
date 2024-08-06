@@ -2,8 +2,8 @@
 
 main(float3 pos : SV_Position, float3 nrm : NORMAL, float4 diff : COLOR, float2, uv1 : TEXCOORD0, uv2 : TEXCOORD1)
 {
-    tex0.uv = TEXCOORD0.xy;
-    tex1.uv = TEXCOORD1.xy;
+    tex0.uv = uv1.xy;
+    tex1.uv = uv2.xy;
 
     float4 neg1 = float4(-1.0f, -1.0f, -1.0f, 1.0f);
 
