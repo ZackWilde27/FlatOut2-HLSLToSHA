@@ -93,7 +93,7 @@ These inputs require type and semantics, as it's up to you which inputs are give
 The syntax for the inputs is ```type``` ```name``` : ```semantic```
 
 The semantics are:
-- POSITION or SV_Position
+- POSITION, VPOS, or SV_Position
 - NORMAL
 - COLOR or SV_Target
 - TEXCOORD (this one can have an index at the end like TEXCOORD0 or TEXCOORD1)
@@ -160,7 +160,7 @@ return dot(specular, dirt);
 
 ### Math
 
-There can only be 1 math expression in a line (except for a few cases), but other than that its exactly how you'd expect, except dividing can only be done by 2.
+There can only be 1 math expression in a line (except for a few cases), but other than that it's exactly how you'd expect, except dividing can only be done by 2.
 
 For example:
 ```hlsl
@@ -184,7 +184,7 @@ Modifiers are addons to instructions, allowing you to do more in a single instru
 - x2 : multiply the result by 2
 - x4 : multiply the result by 4
 <br>
-Each of these math modifiers can be used in either function form, exactly like saturate, or in it's math expression form. This is the only case where 2 math expressions can be on one line.
+Each of these math modifiers can be used in either function form, exactly like saturate, or in its math expression form. This is the only case where 2 math expressions can be on one line.
 
 ```hlsl
 myVar = d2(specular * FRESNEL);
@@ -227,6 +227,7 @@ All functions have to return a value, because it has to be structured just like 
 ```hlsl
 float4 psMainD3D9(float4 colour, float4 specular)
 {
+  // The parameter types are optional
   float4 myDot(a, b)
   {
     a = colour * b;
@@ -268,6 +269,8 @@ float4 myVar = colour;
 asm
 {
   mov r0, t0
+  // When inserting assembly in a function, you can access the return value with %0, and the parameters with %1, %2, and so on
+  max %0, %1, %2
 }
 ```
 
@@ -348,7 +351,7 @@ return dot(specular, dirt);
 <br>
 
 ### Textures
-The vertex shader needs to give each texture its UV coordinates. It's name is the same as defined in the pixel shader, and to load the coordinates use ```tex.uv = ```
+The vertex shader needs to give each texture its UV coordinates. Its name is the same as defined in the pixel shader, and to load the coordinates use ```tex.uv = ```
 
 For example:
 ```hlsl
@@ -396,8 +399,8 @@ float4 var1 = WorldToView(pos);
 
 In vs.1.1, splitting/swizzling is a lot less restrictive.
 ```hlsl
-myVar.zyx = SHADOW.xyz;
-myVar = AMBIENT.yzx * myVar.yxz;
+myVar.zyx = nrm.xyz;
+myVar = pos.yzx * myVar.yxz;
 ```
 
 <br><br>
@@ -411,9 +414,29 @@ float4 VertexShader(float3 pos : POSITION, float3 nrm : NORMAL, float4 diff : CO
   colour.uv = uvs.xy;
   dirt.uv = uvs.xy;
 
-  lighting.xyz = LocalToWorld(nrm);
+  float3 worldNormal = LocalToWorld(nrm);
+
+  lighting.xyz = worldNormal;
   // TODO: re-write HLSL's refl()
   specular.xyz = mySuperAwesomeReflectFunction();
+
+  // The blend factor for the car body comes from the COLOR input
+  BLEND = diff;
+  // TODO: Add fresnel calculations
+  FRESNEL = mySuperAwesomeFresnelFunction();
+
+  // I'm still figuring out the input ambient constants and how those should work, for now I'd use a function with assembly
+  float3 GetAmbient(float3 normal)
+  {
+    asm
+    {
+      dp4   r4.x, %1, c17
+      dp4   r4.y, %1, c18
+      dp4   r4.z, %1, c19
+      mov   %0, r1
+    }
+  }
+  AMBIENT = GetAmbient(worldNormal);
 
   return WorldToView(pos);
 }
