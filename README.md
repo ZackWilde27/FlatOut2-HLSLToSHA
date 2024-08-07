@@ -433,7 +433,7 @@ float4 VertexShader(float3 pos : POSITION, float3 nrm : NORMAL, float4 diff : CO
       dp4   r4.x, %1, c17
       dp4   r4.y, %1, c18
       dp4   r4.z, %1, c19
-      mov   %0, r1
+      mov   %0, r4
     }
   }
   AMBIENT = GetAmbient(worldNormal);
