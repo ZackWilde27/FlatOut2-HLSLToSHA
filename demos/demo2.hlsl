@@ -8,10 +8,12 @@ float4 vsMainD3D9(float3 pos : POSITION, float3 nrm : NORMAL, float4 diff : COLO
     dirt.uv = uv.xy;
 
     // Cubemaps use a direction to sample the texture instead of x and y.
-    lighting.xyz = LocalToWorld(nrm);
+    float3 worldNormal = LocalToWorld(nrm);
+    lighting.xyz = worldNormal;
 
-    // There's no reflect instruction so you'll have to write that code yourself or take it from the original shader and wrap it in an asm{}
-    specular.xyz = mySuperAwesomeReflectFunction(nrm);
+    float3 incident = pos - CAMERA;
+    incident = normalize(incident);
+    specular.xyz = reflect(incident, worldNormal);
 
     // Also you can pass some extra data to the pixel shader through colour registers.
     // These will be interpolated between vertices to get the value in the pixel shader
