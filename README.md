@@ -444,7 +444,7 @@ float4 VertexShader(float3 pos : POSITION, float3 nrm : NORMAL, float4 diff : CO
 
   // Calculate the reflection vector for the specular cubemap
   float4 incident = pos - CAMERA;
-  float4 incident = normalize(incident);
+  incident = normalize(incident);
   specular.xyz = reflect(incident, worldNormal);
 
   // The blend factor for the car body comes from the COLOR input
