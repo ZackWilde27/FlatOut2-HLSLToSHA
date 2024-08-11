@@ -25,12 +25,13 @@ The script also has the option to run in a loop, so that when it detects the fil
 
 The script will create a ```settings.txt``` file when launching for the first time
 ```
-filename =
-authors =
-// loop can be True/False, 0/1, Yes/No, or y/N
-loop = 
+filename = ""
+author = ""
+# loop can be True/False, 0/1, Yes/No, or y/N
+loop = ""
 ```
-Leaving them blank means that it will ask you when the script runs, so you can set it up to ask you every question or none at all.
+Leaving them as "" means that it will ask you when the script runs, so you can set it up to ask you every question or none at all.
+It's actually a python script so theoretically any variable or function from the script can be changed in there
 
 <br><br>
 
@@ -270,7 +271,7 @@ asm
 {
   mov r0, t0
   // When inserting assembly in a function, you can access the return value with %0, and the parameters with %1, %2, and so on
-  max %0, %1, %2
+  dp3 %0, %1, %2
 }
 ```
 
@@ -326,14 +327,18 @@ float4 const2 = float4(1.0f, 1.0f, 1.0f, 1.0f);
 ### Intrinsic Functions
 
 The supported intrinsic functions are as follows:
+- abs()
 - distance() / dst()
 - dot()
 - exp2() (exp2_full() to use the accurate but expensive version)
 - frac()
 - log2() (log2_full() to use the accurate but expensive version)
+- length()
 - mad()
 - max()
 - min()
+- normalize()
+- reflect()
 - rsqrt()
 - rcp()
 - saturate()
@@ -342,10 +347,10 @@ Saturate is the only function that can have math or other functions inside it, t
 
 For example:
 ```hlsl
-float4 myVar = dot(colour, specular);
-myVar = saturate(mad(dirt, specular, lighting));
-myVar = max(colour, dirt);
-return dot(specular, dirt);
+float4 myVar = reflect(nrm, pos);
+myVar = saturate(mad(uv1.x, uv2.y, diff.z));
+myVar = max(myVar, nrm);
+return normalize(nrm);
 ```
 
 <br>
@@ -360,7 +365,7 @@ float4 VertexShader(float3 pos : POSITION, float3 nrm : NORMAL, float2 uvs : TEX
   colour.uv = uvs.xy;
 
   // Cubemaps use a direction as the coordinates instead of the given UVs
-  // For a specular map especially, you'll want to calculate the reflection vector
+  // For a specular map, you'll want to use the reflection vector
   specular.xyz = nrm;
 }
 
@@ -405,6 +410,9 @@ myVar = pos.yzx * myVar.yxz;
 
 <br><br>
 
+Lastly, there are some special constants that the vertex shader uses, as I figure more of them out I'll add them here
+- CAMERA : The position of the camera in world space
+
 <br><br>
 
 So in summary I can write a car body shader like this:
@@ -416,9 +424,13 @@ float4 VertexShader(float3 pos : POSITION, float3 nrm : NORMAL, float4 diff : CO
 
   float3 worldNormal = LocalToWorld(nrm);
 
+  // The lighting cubemap can just be given the world normal
   lighting.xyz = worldNormal;
-  // TODO: re-write HLSL's refl()
-  specular.xyz = mySuperAwesomeReflectFunction();
+
+  // Calculate the reflection vector for the specular cubemap
+  float4 incident = pos - CAMERA;
+  float4 incident = normalize(incident);
+  specular.xyz = reflect(incident, worldNormal);
 
   // The blend factor for the car body comes from the COLOR input
   BLEND = diff;
