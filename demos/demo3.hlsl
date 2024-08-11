@@ -1,9 +1,10 @@
 // The return values are optional since they have to be a float4
 
-main(float3 pos : SV_Position, float3 nrm : NORMAL, float4 diff : COLOR, float2, uv1 : TEXCOORD0, uv2 : TEXCOORD1)
+main(float3 pos : SV_Position, float3 nrm : NORMAL, float4 diff : COLOR, float2, uv1 : TEXCOORD0, float2 uv2 : TEXCOORD1)
 {
-    tex0.uv = uv1.xy;
-    tex1.uv = uv2.xy;
+    // Technically u and v are just x and y respectively so they can be used anywhere and swizzled
+    tex0.uv = uv1.uv;
+    tex1.vu = uv2.vv;
 
     float4 neg1 = float4(-1.0f, -1.0f, -1.0f, 1.0f);
 
