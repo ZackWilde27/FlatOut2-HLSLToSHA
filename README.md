@@ -27,12 +27,12 @@ The script will create a ```settings.txt``` file when launching for the first ti
 ```
 filename = ""
 author = ""
-# loop can be True/False, 0/1, Yes/No, or y/N
+# For loop, "" means to ask, otherwise it's bool(x)
 loop = ""
 ```
 Leaving them as "" means that it will ask you when the script runs, so you can set it up to ask you every question or none at all.
 
-It's actually a python script so theoretically any variable or function from the script can be changed in there
+It's actually a python script so theoretically any variable from the script can be changed in there
 
 <br><br>
 
@@ -392,7 +392,7 @@ EXTRA = nrm.xyz;
 <br>
 
 ### Transforming
-The game supplies 2 matrixes for you to transform with, and to make the whole thing simpler I made them functions:
+The game supplies 2 matrices for you to transform with, and to make the whole thing simpler I made them functions:
 
 ```hlsl
 float4 var2 = LocalToWorld(pos);
