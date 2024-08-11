@@ -378,13 +378,10 @@ def SecondPass(script):
     while (mdex := script.find("mov\t", dex)) != -1:
             sdex = RFind(script, "\n", mdex - 2)
             tdex = script.find("\t", sdex)
-            print(sdex, tdex)
             if tdex != -1:
                 muls = script[tdex + 1:script.index("\n", tdex)].split(",")
                 dst = ((script[script.index(",", mdex) + 1:script.index("\n", mdex + 1)].strip()) if script.find("\n", mdex + 1) != -1 else script[script.index(",", mdex) + 1:].strip())
-                print("[" + script[tdex + 1:script.index(",", tdex + 1)] + "]", "==", "[" + dst + "]")
                 if script[tdex + 1:script.index(",", tdex + 1)] == dst:
-                    print(script.find("," + dst, script.index("\n", tdex)), script.find(dst + ",", script.index("\n", tdex)))
                     if not script.find("," + dst, script.index("\n", tdex)) < script.find(dst + ",", script.index("\n", tdex)):
                         tgt = script[mdex + 3:script.index(",", mdex)]
                         end = script.find("\n", mdex)
