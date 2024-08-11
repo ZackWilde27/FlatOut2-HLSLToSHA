@@ -31,6 +31,7 @@ author = ""
 loop = ""
 ```
 Leaving them as "" means that it will ask you when the script runs, so you can set it up to ask you every question or none at all.
+
 It's actually a python script so theoretically any variable or function from the script can be changed in there
 
 <br><br>
@@ -396,6 +397,20 @@ The game supplies 2 matrixes for you to transform with, and to make the whole th
 ```hlsl
 float4 var2 = LocalToWorld(pos);
 float4 var1 = WorldToView(pos);
+```
+
+<br>
+
+### If statements
+If statements are technically possible, but they are extemely limited, and in a completely different way.
+```hlsl
+float4 var1 = pos;
+float4 var2 = var1.x > pos.y ?;
+// It can be >, <, >=, or <=
+
+// The values being returned here are 1.0 and 0.0,
+// So it's basically
+// var2 = (var1.x > pos.y) ? 1.0 : 0.0;
 ```
 
 <br>
