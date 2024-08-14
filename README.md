@@ -223,6 +223,20 @@ float4 var2 = ? AMBIENT : SHADOW;
 
 <br>
 
+### Defines
+Defines can be used to replace any word with anything else
+```hlsl
+#define with +
+
+float4 PixelShader(chips, dip)
+{
+  return chips with dip;
+}
+```
+They must be placed outside of the shader functions, and can't take any arguments, but otherwise it's standard C syntax
+
+<br>
+
 ### Functions
 In the pixel shader, there's no way to call functions, so these are defines that can have multiple lines, as-in they will copy+paste the code inside.
 All functions have to return a value, because it has to be structured just like the instrinsic functions
@@ -278,6 +292,19 @@ asm
 
 <br>
 
+### Strings
+
+Strings can be used to refer to a specific assembly keyword inside an HLSL statement.
+For example, if you need to access ```c1``` you can simply put it in a string
+```hlsl
+float4 var1 = "c1";
+var1 = "c2" + "c1";
+// or even
+"r0.a" = dot("c2", "c1");
+```
+
+<br>
+
 Lastly, there are some special constants that the game uses, those can be accessed with keywords
 - SHADOW : The shadow mask of the track
 - AMBIENT : Ambient lighting
@@ -291,7 +318,7 @@ Lastly, there are some special constants that the game uses, those can be access
 
 # Writing the Vertex Shader
 
-Math, function, and assembly syntax is exactly the same as the pixel shader, so I won't go over those
+Math, define, function, assembly, and string syntax is exactly the same as the pixel shader, so I won't go over those
 
 ### Returning
 Normally the vertex shader is a void function, but since you have to write to the position register at some point, I made that the return value.
