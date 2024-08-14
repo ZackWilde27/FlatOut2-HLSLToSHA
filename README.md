@@ -95,10 +95,10 @@ These inputs require type and semantics, as it's up to you which inputs are give
 The syntax for the inputs is ```type``` ```name``` : ```semantic```
 
 The semantics are:
-- POSITION, VPOS, or SV_Position
-- NORMAL
-- COLOR or SV_Target
-- TEXCOORD (this one can have an index at the end like TEXCOORD0 or TEXCOORD1)
+- POSITION, VPOS, or SV_Position (float3)
+- NORMAL (float3)
+- COLOR or SV_Target (float4)
+- TEXCOORD (float2) (this one can have an index at the end like TEXCOORD0 or TEXCOORD1)
 
 For example:
 ```hlsl
@@ -333,23 +333,22 @@ The supported intrinsic functions are as follows:
 - dot()
 - exp2() (exp2_full() to use the accurate but expensive version)
 - frac()
-- log2() (log2_full() to use the accurate but expensive version)
 - length()
+- log2() (log2_full() to use the accurate but expensive version)
 - mad()
 - max()
 - min()
 - normalize()
 - reflect()
-- rsqrt()
 - rcp()
-- saturate()
+- rsqrt()
 
-Saturate is the only function that can have math or other functions inside it, the rest have to be structured ```xyz = function()``` or ```return function()```
+These have to be structured ```xyz = function()``` or ```return function()```
 
 For example:
 ```hlsl
 float4 myVar = reflect(nrm, pos);
-myVar = saturate(mad(uv1.x, uv2.y, diff.z));
+myVar = mad(uv1.x, uv2.y, diff.z);
 myVar = max(myVar, nrm);
 return normalize(nrm);
 ```
