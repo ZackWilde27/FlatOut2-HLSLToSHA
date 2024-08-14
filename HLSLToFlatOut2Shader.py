@@ -1,5 +1,5 @@
 # Zack's HLSL to FlatOut SHA
-# Version 1.6
+# Version 1.7
 # Am I particularly proud of this code? uhh
 
 try:
@@ -10,8 +10,6 @@ except:
 import time
 import os
 
-tstruct = time.localtime(time.time())
-
 filename = ""
 author = ""
 loop = ""
@@ -20,9 +18,13 @@ isPixelShader = True
 
 class HVar:
     def __init__(self, name, register, value, tyype):
+        # The HLSL keyword it's associated with
         self.name = name
+        # The assembly keyword it's associated with, could be "r0", "t0", or "oPos.yyy"
         self.register = register
+        # Reserved for constants, this what came after the =, for example "float4(0.0f, 0.0f, 0.0f, 0.0f)"
         self.value = value
+        # The number of components, from 1-4. If it's a matrix, it's prefixed with an m, for example "m3" or "m4"
         self.type = tyype
 
     def __eq__(self, other):
@@ -30,13 +32,13 @@ class HVar:
 
 
     def __str__(self):
-        return "[" + self.name + "]"
+        return "[" +  ", ".join([self.name, self.register, self.value, self.type]) +"]"
 
     def __repr__(self):
-        return "[" + self.name + "]"
+        return "[" +  ", ".join([self.name, self.register, self.value, self.type]) +"]"
 
 class FVar:
-    def __init__(self, name, code, needsVar):
+    def __init__(self, name, code):
         self.name = name
         self.code = code
         
@@ -47,9 +49,14 @@ class FVar:
     def __str__(self):
         return self.name
 
+def DefaultReader(avar, types):
+    return avar.code
+
+def MatrixReader(avar, types):
+    return types[0] + "x" + types[1] + avar.code
 
 class AVar:
-    def __init__(self, name, code, needsVar=False):
+    def __init__(self, name, code, reader=DefaultReader):
         self.name = name
         self.code = code
 
@@ -85,7 +92,7 @@ def PSTexToVSTex():
 
 def ResetAVars(isPS=isPixelShader):
     global avars
-    avars = [AVar("dot", "dp3\t%0, %1, %2"), AVar("lerp", "lrp\t%0, %3, %1, %2"), AVar("mad", "mad\t%0, %1, %2, %3")] if isPS else [AVar("dot", "dp3\t%0, %1, %2"), AVar("dot3", "dp3\t%0, %1, %2"), AVar("dot4", "dp4\t%0, %1, %2"), AVar("mad", "mad\t%0, %1, %2, %3"), AVar("exp2", "expp\t%0, %1"), AVar("exp2_full", "exp\t%0, %1"), AVar("frac", "frc\t%0, %1"), AVar("max", "max\t%0, %1, %2"), AVar("min", "min\t%0, %1, %2"), AVar("log2", "logp\t%0, %1"), AVar("log2_full", "log\t%0, %1"), AVar("rcp", "rcp\t%0,%1"), AVar("rsqrt", "rsq\t%0, %1"), AVar("distance", "dst\t%0, %1"), AVar("dst", "dst\t%0, %1"), AVar("abs", "mul\t%z.x, %1, %1rsq\t%z.y, %z.x\nrcp\t%0, %z.y"), AVar("reflect", "dp3_x2\t%z, %1, %2\nmul\t%z, %z, %2\nsub\t%0, %1, %z"), AVar("normalize", "dp3\t%z.a, %1, %1\nrsq\t%z.a, %z.a\nmul\t%0, %1, %z.a"), AVar("length", "dp3\t%z.a, %1, %1\nrsq\t%z.a, %z.a\nrcp\t%0, %z.a"), AVar("LocalToWorld", "m3x3\t%0, %1, c4"), AVar("WorldToView", "m4x4\t%0, %1, c0")]
+    avars = [AVar("dot", "dp3\t%0, %1, %2"), AVar("lerp", "lrp\t%0, %3, %1, %2"), AVar("mad", "mad\t%0, %1, %2, %3")] if isPS else [AVar("dot", "dp3\t%0, %1, %2"), AVar("dot3", "dp3\t%0, %1, %2"), AVar("dot4", "dp4\t%0, %1, %2"), AVar("mad", "mad\t%0, %1, %2, %3"), AVar("exp2", "expp\t%0, %1"), AVar("exp2_full", "exp\t%0, %1"), AVar("frac", "frc\t%0, %1"), AVar("max", "max\t%0, %1, %2"), AVar("min", "min\t%0, %1, %2"), AVar("log2", "logp\t%0, %1"), AVar("log2_full", "log\t%0, %1"), AVar("rcp", "rcp\t%0,%1"), AVar("rsqrt", "rsq\t%0, %1"), AVar("distance", "dst\t%0, %1"), AVar("dst", "dst\t%0, %1"), AVar("abs", "mul\t%z.x, %1, %1rsq\t%z.y, %z.x\nrcp\t%0, %z.y"), AVar("reflect", "dp3_x2\t%z, %1, %2\nmul\t%z, %z, %2\nsub\t%0, %1, %z"), AVar("normalize", "dp3\t%z.a, %1, %1\nrsq\t%z.a, %z.a\nmul\t%0, %1, %z.a"), AVar("length", "dp3\t%z.a, %1, %1\nrsq\t%z.a, %z.a\nrcp\t%0, %z.a"), AVar("clamp", "min\t%z, %1, %3\nmax\t%0, %z, %2"), AVar("sqrt", "rsqrt\t%z, %1\nrcp\t%0, %z"), AVar("LocalToWorld", "m3x%tn1\t%0, %1, c4"), AVar("WorldToView", "m4x%tn1\t%0, %1, c0")]
 
 def TokenType(char, lastChar):
     if char in "01234567890." :
@@ -126,6 +133,9 @@ def HVarNameToRegister(name):
     ext = ""
     prefix = ""
 
+    if name[0] == name[-1] and name[0] == "\"":
+        return name[1:-1]
+
     for i in range(2, 5):
         if ("float" + str(i) + "(") in name:
             return AddConstant("constant_" + str(constants), name)
@@ -140,6 +150,7 @@ def HVarNameToRegister(name):
 
     if name in allhvars:
         return prefix + allhvars[allhvars.index(name)].register + ext
+
     Error("Unknown Variable: [" + name + "]")
     return ""
 
@@ -157,7 +168,9 @@ constants = 3
 
 
 def IsDef(line):
-    return line.split(" ")[0] in ['float' + str(i) for i in range(2, 5)] + ["float"]
+    if line is None:
+        return False
+    return (line.split(" ")[0] in ['float' + str(i) for i in range(2, 5)] + ['int' + str(i) for i in range(2, 5)] + ['bool' + str(i) for i in range(2, 5)] + ["float", "int", "bool"])
 
 def IsFunc(line):
     return "(" in line
@@ -174,7 +187,28 @@ def IsOp(text):
 def IsCall(text):
     return "(" in text
 
+# Only replaces when there's space around the subject, makes absolutely sure it's not part of some other word
+def CarefulReplace(text, replacer, replacee):
+    # Doing something with it to make sure it's a copy
+    script = text.replace("\n", "\n")
 
+    if script[:len(replacer)] == replacer:
+        script = replacee + script
+
+    if script[-len(replacer):] == replacer:
+        script = script[:-len(replacer)] + replacee
+
+    spaces = "\n\t +-*/="
+
+    for i in spaces:
+        for j in spaces:
+            script = script.replace(i + replacer + j, i + replacee + j)
+
+    dexes = [text.find(" ", dex), text.find("\n", dex), text.find("\t", dex)]
+    nextSpace = min(filter(lambda a : (a != -1), dexes))
+
+    return script
+            
 # returns the ) to the ( that you give it in a string, basically it skips nested parenthasis
 def GetParEnd(string, index, par="()"):
     layer = 0
@@ -261,7 +295,7 @@ def CompileOperand(string, ext="", dst=""):
     if isPixelShader:
         if "/" in string:
             if string[string.index("/") + 1:].strip() != "2":
-                Error("Dividing can only be done by 2. It has to be used like saturate() where it's an addon to a math expression or another function, such as (a + b) / 2")
+                Error("Dividing can only be done by 2. It can be used like saturate() where it's an addon to a math expression or another function, such as (a + b) / 2")
             return CompileOperand(string.split("/")[0].strip(), "_d2" + ext, dst)
 
         if "*" in string:
@@ -286,8 +320,9 @@ def CompileOperand(string, ext="", dst=""):
             if dst == "":
                 dst = AllocateRegister()
 
+            # When calling a function that reads from the destination, it checks if you gave it a write-only register and will use an unused register if that's the case.
             if ("%z" in end and dst[0] != 'r') or "%z." in end:
-                newDst = AllocateRegister()
+                newDst = "r" + str(rStatus.index(False))
                 end = end.replace("%z", newDst)
             else:
                 end = end.replace("%z", dst)
@@ -299,7 +334,26 @@ def CompileOperand(string, ext="", dst=""):
             else:
                 end = end.replace("\t", ext + "\t")
             for dex, item in enumerate(inner):
-                end = end.replace("%" + str(dex + 1), HVarNameToRegister(item))
+                if "." in item:
+                    item = item.split(".")
+                    item.append(len(item[1]))
+                else:
+                    item = [item, ""]
+                    
+                    if item[0] in hvars:
+                        item[-1] = str(hvars[hvars.index(item[0])].type)
+                    elif item[0] in dhvars:
+                        item[-1] = str(dhvars[dhvars.index(item[0])].type)
+                    else:
+                        if isPixelShader:
+                            item[-1] = "4"
+                        else:
+                            item[-1] = "m4" if (item[0] == "c0") else "m3" if (item[0] == "c4") else "4"
+                end = end.replace("%tn" + str(dex + 1), str(item[-1]))
+                            
+                        
+                    
+                end = end.replace("%" + str(dex + 1), HVarNameToRegister('.'.join(item[:-1])))
             return [dst, end + "\n"]
 
     string = string.replace("(", "").replace(")", "")
@@ -341,6 +395,16 @@ maxR = 2
 maxT = 4
 maxV = 2
 maxC = 5
+
+def includes_defines(list_item, test_value):
+    return list_item[0] == test_value
+
+# includes with a key
+def includes(lst, item, func=includes_defines):
+    for i in lst:
+        if func(i, item):
+            return True
+    return False
 
 # Removes vector splitting to get just the variable
 def StripSplit(string):
@@ -501,6 +565,9 @@ def CompileHLSL(script, hv=-1, dst="r0"):
                 line = line.strip()
 
                 line = HandleAssign(line)
+                for d in inlineDefs:
+                    if d[0] in line:
+                        line = CarefulReplace(line, d[0], d[1])
 
                 # Checking for new variables or functions
                 if IsDef(line):
@@ -558,11 +625,19 @@ def CompileHLSL(script, hv=-1, dst="r0"):
                     # Assigning pre-existing variable
                     if tokens[1] == '=':
                         typeOfExpr = "Assign"
-    
-                        if StripSplit(tokens[0].strip()) in hvars + dhvars:
-                            output += CompileOperand(line[line.index("=") + 1:], "", HVarNameToRegister(tokens[0].strip()))[1]
+                        tokens[0] = tokens[0].strip()
+                        if tokens[0][0] == tokens[0][-1] and tokens[0][0] == "\"":
+                            output += CompileOperand(line[line.index("=") + 1:], "", tokens[0][1:-1])[1]
                         else:
-                            Error("Unknown token: [" + StripSplit(tokens[0].strip()) + "]")
+                            name = StripSplit(tokens[0])
+                            if name in hvars + dhvars:
+                                output += CompileOperand(line[line.index("=") + 1:], "", HVarNameToRegister(tokens[0]))[1]
+                            else:
+                                if not includes(inlineDefs, name):
+                                    Error("Unknown token: [" + StripSplit(tokens[0]) + "]")
+                                for d in inlineDefs:
+                                    if d[0] == name:
+                                        output += CompileOperand(line[line.index("=") + 1:], "", d[1])[1]
 
             else:
                 buffer += char
@@ -639,29 +714,28 @@ def SafeGet(lst, dex):
             return lst[dex]
     return ""
 
-class CDefines:
-    def __init__(self, name, list_of_parameter_names, replace_with):
-        self.name = name
-        self.parameters = list_of_parameter_names
-        self.hlsl = replace_with
+def Surround(thing):
+    return "[" + thing + "]"
 
-# Contains lists where the first item is the name, the second is a list of parameters,  the second item being what to replace
+# Contains lists where the first item is the name, and the second item being what to replace
 inlineDefs = []
 
 def HandleDefines(line):
-    line = line.strip().replace("\t", " ").replace("  ", " ")
-    if line[0] == "#":
-        # Pre-processor
-
-        print("checking preprocessor:", line[1:7])
-        if line[1:7] == "define":
-            name = line.split(" ")[1]
-            if "(" in name:
-                name = name[:name.index("(")]
+    tempLine = line.strip().replace("\t", " ").replace("  ", " ").replace(";", "")
+    if tempLine:
+        if tempLine[0] == "#":
+            # Pre-processor
+            if tempLine[1:7] == "define":
                 
-            else:
-                replacee = line.split(" ")[2]
-                inlineDefs.append((name, "", replacee))
+                name = tempLine.split(" ")[1].strip()
+
+                replacee = tempLine[tempLine.index(" ", tempLine.index(" ") + 1):].strip()
+                inlineDefs.append((name, replacee))
+
+        if tempLine.split(" ")[0] == "string":
+            name = tempLine[7:tempLine.index("=")].strip()
+            replacee = tempLine[tempLine.index("=") + 1:].strip().replace("\"", "")
+            inlineDefs.append((name, replacee))
 
 def SortDecl(a):
     return int(a[a.find("v") + 1]) if a.strip() else 65535
@@ -683,10 +757,11 @@ try:
             
 except:
     with open("settings.txt", "w") as settingsFile:
-        settings = "\'\'\'\n Comment these out to change them. \nThis is a python script so theoretically any variable from the script can be changed from here\n\'\'\'\n#filename = \"\"\n#authors = \"\"\n#loop = True\n#secondStep = True\n"
+        settings = "\'\'\'\n Comment these out to change them. \nThis is a python script so theoretically any variable from the script can be changed from here\n\'\'\'\n#filename = \"\"\n#author = \"\"\n#loop = True\n#secondStep = True\n\n\n# Do not uncomment these, these are the defines for various constants in the shader. You can change these to change their name or add more based on the shader\n#define SHADOW \"c2\"\n#define AMBIENT \"v0\"\n#define FRESNEL \"v0.a\"\n#define BLEND \"v1.a\"\n#define EXTRA \"v1\"\n"
         settingsFile.write(settings)
 
 # The settings file is now just a python file, so technically this modding tool has mod support
+[HandleDefines(line) for line in settings.split("\n")]
 exec(settings)
 
 if not filename:
@@ -702,187 +777,193 @@ if not author:
 
 if loop == "":
     print("This script can loop so that when the hlsl file changes it'll automatically re-compile.")
-    loop = input("Do you want to enable that? (y/N)") in "Yy"
+    loop = input("Do you want to enable that? (y/N) ") in "Yy"
 
 while stuckInLoop:
 
     stuckInLoop = loop
     
     if os.path.getmtime(filename) != mtime:
-        mtime = os.path.getmtime(filename)
-        dhvars = [HVar("SHADOW", "c2", "", "4"), HVar("AMBIENT", "v0", "", "3"), HVar("FRESNEL", "v0.a", "", "1"), HVar("BLEND", "v1.a", "", "1"), HVar("%split%", "", "", "")]
-        ResetDHVars(True)
-        hvars = []
-        fvars = []
-        constants = 3
-        coordinateInputs = 0
-        usedSemantics = [False, False, False]
-        scopeSnapshot = []
-        psSnapshot = []
-        r0 = ""
-        r1 = ""
-        decl = ""
-        rStatus = [False for i in range(maxR)]
-        linenum = 0
-        col = 0
-        hlsl = ""
-        time.sleep(0.5)
-        with open(filename) as file:
-            hlsl = file.read()
+        try:
+            tstruct = time.localtime(time.time())
+            mtime = os.path.getmtime(filename)
+            dhvars = [HVar("SHADOW", "c2", "", "4"), HVar("AMBIENT", "v0", "", "3"), HVar("FRESNEL", "v0.a", "", "1"), HVar("BLEND", "v1.a", "", "1"), HVar("%split%", "", "", "")]
+            ResetDHVars(True)
+            hvars = []
+            fvars = []
+            constants = 3
+            coordinateInputs = 0
+            usedSemantics = [False, False, False]
+            scopeSnapshot = []
+            psSnapshot = []
+            inlineDefs = []
+            r0 = ""
+            r1 = ""
+            decl = ""
+            rStatus = [False for i in range(maxR)]
+            linenum = 0
+            col = 0
+            hlsl = ""
+            time.sleep(0.5)
+            with open(filename) as file:
+                hlsl = file.read()
+                [HandleDefines(line) for line in hlsl.split("\n")]
 
-        (inputs, pixelshader) = GetShader(hlsl, True)
-        if pixelshader:
-            if not inputs[0].strip():
-                textures = 0
-            else:
-                textures = len(inputs)
-                for i, put in enumerate(inputs):
-                    if " " in put.strip():
-                        put = put.strip().split(" ")[-1].strip()
-                    dhvars.append(HVar(put.strip(), "t" + str(i), "debug", "4"))
+            (inputs, pixelshader) = GetShader(hlsl, True)
+            if pixelshader:
+                if not inputs[0].strip():
+                    textures = 0
+                else:
+                    textures = len(inputs)
+                    for i, put in enumerate(inputs):
+                        if " " in put.strip():
+                            put = put.strip().split(" ")[-1].strip()
+                        dhvars.append(HVar(put.strip(), "t" + str(i), "debug", "4"))
 
 
-        psSnapshot = [item for item in dhvars]
+            psSnapshot = [item for item in dhvars]
 
 
-        (inputs, vertexshader) = GetShader(hlsl, False)
-        if vertexshader:
-            if inputs[0].strip():
-                for i, put in enumerate(inputs):
-                    put = put.strip()
-                    if " " not in put:
-                        Error("Semantics and type are required on parameters in the vertex shader. They must be structured \"type name : semantic\"")
-                    put = put.split(":")
-                    t = [put[1].strip()]
-                    t.append(put[0].strip().split(" ")[-1].strip())
-                    t.append(put[0].strip().split(" ")[-2].strip())
-                    dex = GetSemantic(t[0])
-                    if dex == -1:
-                        Error("Unknown Semantic: [" + t[0] + "]")
+            (inputs, vertexshader) = GetShader(hlsl, False)
+            if vertexshader:
+                if inputs[0].strip():
+                    for i, put in enumerate(inputs):
+                        put = put.strip()
+                        if " " not in put:
+                            Error("Semantics and type are required on parameters in the vertex shader. They must be structured \"type name : semantic\"")
+                        put = put.split(":")
+                        t = [put[1].strip()]
+                        t.append(put[0].strip().split(" ")[-1].strip())
+                        t.append(put[0].strip().split(" ")[-2].strip())
+                        dex = GetSemantic(t[0])
+                        if dex == -1:
+                            Error("Unknown Semantic: [" + t[0] + "]")
 
-                    
-                    if dex == 3:
-                        dhvars.append(HVar(t[1], "v" + str(dex + coordinateInputs), "debug", "2"))
-                        decl += "\t\tfloat\tv" + str(dex + coordinateInputs) + "[2];\t// " + t[1] + "\n"
-                        coordinateInputs += 1
                         
-                    else:
-                        usedSemantics[dex] = True
-                        dhvars.append(HVar(t[1], "v" + str(dex), "debug", ("1" if (t[2] == "float") else t[2][-1])))
-                        if t[2][-1] == "4":
-                            decl += "\t\tD3DCOLOR\tv" + str(dex) + ";\t// " + t[1] + "\n"
+                        if dex == 3:
+                            dhvars.append(HVar(t[1], "v" + str(dex + coordinateInputs), "debug", "2"))
+                            decl += "\t\tfloat\tv" + str(dex + coordinateInputs) + "[2];\t// " + t[1] + "\n"
+                            coordinateInputs += 1
+                            
                         else:
-                            decl += "\t\tfloat\tv" + str(dex) + ("" if t[2] == "float" else ("[" + t[2][-1] + "]")) + ";\t// " + t[1] + "\n"
+                            usedSemantics[dex] = True
+                            dhvars.append(HVar(t[1], "v" + str(dex), "debug", ("1" if (t[2] == "float") else t[2][-1])))
+                            if t[2][-1] == "4":
+                                decl += "\t\tD3DCOLOR\tv" + str(dex) + ";\t// " + t[1] + "\n"
+                            else:
+                                decl += "\t\tfloat\tv" + str(dex) + ("" if t[2] == "float" else ("[" + t[2][-1] + "]")) + ";\t// " + t[1] + "\n"
 
-        decl = decl.split("\n")
-        decl.sort(key=SortDecl)
-        decl = "\t\tstream 0;\n" + "\n".join(decl) + "\n"
-                
+            decl = decl.split("\n")
+            decl.sort(key=SortDecl)
+            decl = "\t\tstream 0;\n" + "\n".join(decl) + "\n"
+                    
 
 
-        passbuffer = ""
+            passbuffer = ""
 
-        if createFullFile:
-            with open(newfilename, "w") as sfile:
-                sfile.write("///////////////////////////////////////////////////////////////////////////\n")
-                sfile.write("// " + newfilename[newfilename.rfind("/") + 1:] + "\n")
-                sfile.write("///////////////////////////////////////////////////////////////////////////\n")
-                sfile.write("// Created on " + str(tstruct.tm_mon) + "/" + str(tstruct.tm_mday) + "/" + str(tstruct.tm_year) + " " + str((tstruct.tm_hour if tstruct.tm_hour < 13 else tstruct.tm_hour - 12)) + ":" + str(tstruct.tm_min).rjust(2, "0") + ":" + str(tstruct.tm_sec).rjust(2, "0") + " " + ("PM" if tstruct.tm_hour > 12 else "AM") + "\n")
-                sfile.write("//\n")
-                sfile.write("// Authors: " + author + "\n")
-                sfile.write("//\n")
-                sfile.write("// Generated with Zack's HLSL-to-FlatOut-Shader v1.6\n")
-                sfile.write("///////////////////////////////////////////////////////////////////////////\n")
+            if createFullFile:
+                with open(newfilename, "w") as sfile:
+                    sfile.write("///////////////////////////////////////////////////////////////////////////\n")
+                    sfile.write("// " + newfilename[newfilename.rfind("/") + 1:] + "\n")
+                    sfile.write("///////////////////////////////////////////////////////////////////////////\n")
+                    sfile.write("// Created on " + str(tstruct.tm_mon) + "/" + str(tstruct.tm_mday) + "/" + str(tstruct.tm_year) + " " + str((tstruct.tm_hour if tstruct.tm_hour < 13 else tstruct.tm_hour - 12)) + ":" + str(tstruct.tm_min).rjust(2, "0") + ":" + str(tstruct.tm_sec).rjust(2, "0") + " " + ("PM" if tstruct.tm_hour > 11 else "AM") + "\n")
+                    sfile.write("//\n")
+                    sfile.write("// Authors: " + author + "\n")
+                    sfile.write("//\n")
+                    sfile.write("// Generated with Zack's HLSL-to-FlatOut-Shader v1.7\n")
+                    sfile.write("///////////////////////////////////////////////////////////////////////////\n")
 
-                for i in range(textures):
-                    sfile.write("Texture Tex" + str(i) + ";\n")
+                    for i in range(textures):
+                        sfile.write("Texture Tex" + str(i) + ";\n")
 
-                sfile.write("\nconst string inputStreamFormat = \"" + MakeStreamFormat() + "\";\n\n")
+                    sfile.write("\nconst string inputStreamFormat = \"" + MakeStreamFormat() + "\";\n\n")
 
-                sfile.write("vertexshader vSdr =\n\tdecl\n\t{\n" + decl + "\t}\n\tasm\n\t{\n")
-                sfile.write("\t\tvs.1.1\n\n")
+                    sfile.write("vertexshader vSdr =\n\tdecl\n\t{\n" + decl + "\t}\n\tasm\n\t{\n")
+                    sfile.write("\t\tvs.1.1\n\n")
 
-                if pixelshader != "":
-                    scope = "Pixel Shader"
-                    isPixelShader = True
-                    ResetAVars(True)
-                    ResetDHVars(True)
-                    # Making absolutely sure it's a copy and not a reference
-                    hvars = [item for item in dhvars]
-                    dhvars = [item for item in psSnapshot]
-                    psSnapshot = [item for item in hvars]
-                    hvars = []
-                    fvars = []
-                    maxR = 2
-                    maxC = 8
-                    maxV = 2
-                    rStatus = [False for i in range(maxR)]
-                    constants = 3
-                    assemble = CompileHLSL(pixelshader)
-                    for hvar in hvars:
-                        if hvar.register:
-                            if hvar.register[0] == 'c':
-                                passbuffer += "\t\tPixelShaderConstantF[" + hvar.register[1:] + "] = " + hvar.value + ";\n"
-                    if textures:
-                        assemble = "\n" + assemble
-                        for i in range(textures - 1, -1, -1):
-                            assemble = "tex\tt" + str(i) + "\t// " + HVarRegisterToName("t" + str(i)) + "\n" + assemble
-                
-                if vertexshader != "":
-                    scope = "Vertex Shader"
-                    isPixelShader = False
-                    constants = 32
-                    ResetAVars(False)
-                    dhvars = [item for item in psSnapshot]
-                    psSnapshot = [item for item in hvars]
-                    ResetDHVars(False)
-                    PSTexToVSTex()
-                    maxR = 12
-                    maxC = 96
-                    maxV = 16
-                    hvars = []
-                    fvars = []
-                    rStatus = [False for i in range(maxR)]
-                    sfile.write(MakeDcls() + "\n")
-                    for line in CompileHLSL(vertexshader, -1, "oPos").split("\n"):
-                        sfile.write("\t\t" + line + "\n")
+                    if pixelshader != "":
+                        scope = "Pixel Shader"
+                        isPixelShader = True
+                        ResetAVars(True)
+                        ResetDHVars(True)
+                        # Making absolutely sure it's a copy and not a reference
+                        hvars = [item for item in dhvars]
+                        dhvars = [item for item in psSnapshot]
+                        psSnapshot = [item for item in hvars]
+                        hvars = []
+                        fvars = []
+                        maxR = 2
+                        maxC = 8
+                        maxV = 2
+                        rStatus = [False for i in range(maxR)]
+                        constants = 3
+                        assemble = CompileHLSL(pixelshader)
+                        for hvar in hvars:
+                            if hvar.register:
+                                if hvar.register[0] == 'c':
+                                    passbuffer += "\t\tPixelShaderConstantF[" + hvar.register[1:] + "] = " + hvar.value + ";\n"
+                        if textures:
+                            assemble = "\n" + assemble
+                            for i in range(textures - 1, -1, -1):
+                                assemble = "tex\tt" + str(i) + "\t// " + HVarRegisterToName("t" + str(i)) + "\n" + assemble
+                    
+                    if vertexshader != "":
+                        scope = "Vertex Shader"
+                        isPixelShader = False
+                        constants = 32
+                        ResetAVars(False)
+                        dhvars = [item for item in psSnapshot]
+                        psSnapshot = [item for item in hvars]
+                        ResetDHVars(False)
+                        PSTexToVSTex()
+                        maxR = 12
+                        maxC = 96
+                        maxV = 16
+                        hvars = []
+                        fvars = []
+                        rStatus = [False for i in range(maxR)]
+                        sfile.write(MakeDcls() + "\n")
+                        for line in CompileHLSL(vertexshader, -1, "oPos").split("\n"):
+                            sfile.write("\t\t" + line + "\n")
 
-                sfile.write("\t};\n\n")
-
-                passbuffer = "\n" + passbuffer
-
-                for hvar in hvars:
-                    if hvar.register[0] == 'c':
-                        passbuffer = "\t\tVertexShaderConstantF[" + hvar.register[1:] + "] = " + hvar.value + ";\n" + passbuffer
-
-                
-
-                if pixelshader != "":
-                    hvars = [item for item in psSnapshot]
-                    sfile.write("pixelshader pSdr =\n\tasm\n\t{\n")
-                    sfile.write("\t\tps.1.1\n")
-                    sfile.write("\n")
-                    for line in assemble.split("\n"):
-                        sfile.write("\t\t" + line + "\n")
                     sfile.write("\t};\n\n")
 
-                
+                    passbuffer = "\n" + passbuffer
 
-                sfile.write("Technique T0\n")
-                sfile.write("{\n")
-                sfile.write("\tPass P0\n")
-                sfile.write("\t{\n")
-                sfile.write(passbuffer)
-                sfile.write("\n")
+                    for hvar in hvars:
+                        if hvar.register[0] == 'c':
+                            passbuffer = "\t\tVertexShaderConstantF[" + hvar.register[1:] + "] = " + hvar.value + ";\n" + passbuffer
 
-                for i in range(textures):
-                    sfile.write("\t\tTexture[" + str(i) + "] = <Tex" + str(i) + ">;\n")
-                
-                sfile.write("\n\t\tVertexShader = <vSdr>;\n")
-                sfile.write("\t\tPixelShader = <pSdr>;\n")
-                sfile.write("\t}\n}")
-                print("Done!")
+                    
 
-        else:
-            if pixelshader != "":
-                    print(CompileHLSL(pixelshader))
+                    if pixelshader != "":
+                        hvars = [item for item in psSnapshot]
+                        sfile.write("pixelshader pSdr =\n\tasm\n\t{\n")
+                        sfile.write("\t\tps.1.1\n")
+                        sfile.write("\n")
+                        for line in assemble.split("\n"):
+                            sfile.write("\t\t" + line + "\n")
+                        sfile.write("\t};\n\n")
+
+                    
+
+                    sfile.write("Technique T0\n")
+                    sfile.write("{\n")
+                    sfile.write("\tPass P0\n")
+                    sfile.write("\t{\n")
+                    sfile.write(passbuffer)
+                    sfile.write("\n")
+
+                    for i in range(textures):
+                        sfile.write("\t\tTexture[" + str(i) + "] = <Tex" + str(i) + ">;\n")
+                    
+                    sfile.write("\n\t\tVertexShader = <vSdr>;\n")
+                    sfile.write("\t\tPixelShader = <pSdr>;\n")
+                    sfile.write("\t}\n}")
+                    print("Done!")
+
+            else:
+                if pixelshader != "":
+                        print(CompileHLSL(pixelshader))
+        except:
+            print("Python Error Occured, check the above errors")
