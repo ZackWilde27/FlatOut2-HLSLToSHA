@@ -295,7 +295,7 @@ asm
 ### Strings
 
 Strings can be used to refer to a specific assembly keyword inside an HLSL statement.
-For example, if you need to access ```c1``` you can simply put it in a string
+For example, if you need to access the c1 register you can simply put it in a string
 ```hlsl
 float4 var1 = "c1";
 var1 = "c2" + "c1";
@@ -356,6 +356,7 @@ float4 const2 = float4(1.0f, 1.0f, 1.0f, 1.0f);
 
 The supported intrinsic functions are as follows:
 - abs()
+- clamp()
 - distance() / dst()
 - dot()
 - exp2() (exp2_full() to use the accurate but expensive version)
@@ -369,6 +370,7 @@ The supported intrinsic functions are as follows:
 - reflect()
 - rcp()
 - rsqrt()
+- sqrt()
 
 These have to be structured ```xyz = function()``` or ```return function()```
 
