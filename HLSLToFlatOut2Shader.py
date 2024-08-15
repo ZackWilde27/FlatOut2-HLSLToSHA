@@ -1,5 +1,5 @@
 # Zack's HLSL to FlatOut SHA
-# Version 1.7
+# Version 1.7.1
 # Am I particularly proud of this code? uhh
 
 try:
@@ -92,7 +92,7 @@ def PSTexToVSTex():
 
 def ResetAVars(isPS=isPixelShader):
     global avars
-    avars = [AVar("dot", "dp3\t%0, %1, %2"), AVar("lerp", "lrp\t%0, %3, %1, %2"), AVar("mad", "mad\t%0, %1, %2, %3")] if isPS else [AVar("dot", "dp3\t%0, %1, %2"), AVar("dot3", "dp3\t%0, %1, %2"), AVar("dot4", "dp4\t%0, %1, %2"), AVar("mad", "mad\t%0, %1, %2, %3"), AVar("exp2", "expp\t%0, %1"), AVar("exp2_full", "exp\t%0, %1"), AVar("frac", "frc\t%0, %1"), AVar("max", "max\t%0, %1, %2"), AVar("min", "min\t%0, %1, %2"), AVar("log2", "logp\t%0, %1"), AVar("log2_full", "log\t%0, %1"), AVar("rcp", "rcp\t%0,%1"), AVar("rsqrt", "rsq\t%0, %1"), AVar("distance", "dst\t%0, %1"), AVar("dst", "dst\t%0, %1"), AVar("abs", "mul\t%z.x, %1, %1rsq\t%z.y, %z.x\nrcp\t%0, %z.y"), AVar("reflect", "dp3_x2\t%z, %1, %2\nmul\t%z, %z, %2\nsub\t%0, %1, %z"), AVar("normalize", "dp3\t%z.a, %1, %1\nrsq\t%z.a, %z.a\nmul\t%0, %1, %z.a"), AVar("length", "dp3\t%z.a, %1, %1\nrsq\t%z.a, %z.a\nrcp\t%0, %z.a"), AVar("clamp", "min\t%z, %1, %3\nmax\t%0, %z, %2"), AVar("sqrt", "rsqrt\t%z, %1\nrcp\t%0, %z"), AVar("LocalToWorld", "m3x%tn1\t%0, %1, c4"), AVar("WorldToView", "m4x%tn1\t%0, %1, c0")]
+    avars = [AVar("dot", "dp3\t%0, %1, %2"), AVar("lerp", "lrp\t%0, %3, %1, %2"), AVar("mad", "mad\t%0, %1, %2, %3")] if isPS else [AVar("dot", "dp3\t%0, %1, %2"), AVar("dot3", "dp3\t%0, %1, %2"), AVar("dot4", "dp4\t%0, %1, %2"), AVar("mad", "mad\t%0, %1, %2, %3"), AVar("exp2", "expp\t%0, %1"), AVar("exp2_full", "exp\t%0, %1"), AVar("frac", "frc\t%0, %1"), AVar("max", "max\t%0, %1, %2"), AVar("min", "min\t%0, %1, %2"), AVar("log2", "logp\t%0, %1"), AVar("log2_full", "log\t%0, %1"), AVar("rcp", "rcp\t%0,%1"), AVar("rsqrt", "rsq\t%0, %1"), AVar("distance", "dst\t%0, %1"), AVar("dst", "dst\t%0, %1"), AVar("abs", "mul\t%z.x, %1, %1rsq\t%z.y, %z.x\nrcp\t%0, %z.y"), AVar("reflect", "dp3_x2\t%z, %1, %2\nmul\t%z, %z, %2\nsub\t%0, %1, %z"), AVar("normalize", "dp3\t%z.a, %1, %1\nrsq\t%z.a, %z.a\nmul\t%0, %1, %z.a"), AVar("length", "dp3\t%z.a, %1, %1\nrsq\t%z.a, %z.a\nrcp\t%0, %z.a"), AVar("clamp", "min\t%z, %1, %3\nmax\t%0, %z, %2"), AVar("sqrt", "rsq\t%z, %1\nrcp\t%0, %z"), AVar("LocalToWorld", "m3x%tn1\t%0, %1, c4"), AVar("WorldToView", "m4x%tn1\t%0, %1, c0")]
 
 def TokenType(char, lastChar):
     if char in "01234567890." :
@@ -198,7 +198,7 @@ def CarefulReplace(text, replacer, replacee):
     if script[-len(replacer):] == replacer:
         script = script[:-len(replacer)] + replacee
 
-    spaces = "\n\t +-*/="
+    spaces = "\n\t +-*/=(){},."
 
     for i in spaces:
         for j in spaces:
@@ -870,7 +870,7 @@ while stuckInLoop:
                     sfile.write("//\n")
                     sfile.write("// Authors: " + author + "\n")
                     sfile.write("//\n")
-                    sfile.write("// Generated with Zack's HLSL-to-FlatOut-Shader v1.7\n")
+                    sfile.write("// Generated with Zack's HLSL-to-FlatOut-Shader v1.7.1\n")
                     sfile.write("///////////////////////////////////////////////////////////////////////////\n")
 
                     for i in range(textures):
