@@ -133,8 +133,10 @@ float4 var3 = dirt; // This will be treated as var2, overwriting the previous le
 
 Though, you can have up to 5 constants, which can hold misc. data for use in the shader (It's actually 8, but the game reserves the first 3)
 ```hlsl
-float4 const1 = float4(0.0f, 0.0f, 1.0f, 1.0f);
-float4 const2 = float4(1.0f, 1.0f, 1.0f, 1.0f);
+const float4 const1 = float4(0.0f, 0.0f, 1.0f, 1.0f);
+const float4 const2 = float4(1.0f, 1.0f, 1.0f, 1.0f);
+// the const keyword is optional
+float4 const3 = float4(1.0f, 1.0f, 0.0f, 0.0f);
 //...
 ```
 
@@ -162,7 +164,7 @@ return dot(specular, dirt);
 
 ### Math
 
-There can only be 1 math expression in a line (except for a few cases), but other than that it's exactly how you'd expect, except dividing can only be done by 2.
+Math is exactly how you'd expect except for the order of operations, and dividing can only be done by 2
 
 For example:
 ```hlsl
@@ -174,6 +176,22 @@ myVar = colour / 2;
 myVar = -colour;
 // You can also do 1-x
 myVar = 1-colour * 1-specular;
+```
+
+When putting multiple math statements in a line, it does not follow the order of operations, it will perform each operation in the order you wrote it
+```hlsl
+float4 myFloat = colour + specular * lighting + AMBIENT;
+// from the compiler's perspective looks like this:
+float4 myFloat = ((colour + specular) * lighting) + AMBIENT;
+```
+
+Also the destination is used to store the immediate results, so it can't be part of the equation unless it's in the first operation
+```
+// myFloat will get overwritten with (colour + specular) before the multiply, losing the value that was stored in there.
+float4 myFloat = colour + specular * myFloat;
+
+// This one shouldn't cause problems
+float4 myFloat = specular * myFloat + colour;
 ```
 
 <br>
@@ -348,6 +366,19 @@ Also, you can have up to 64 constants, which can hold misc. data for use in the 
 float4 const1 = float4(0.0f, 0.0f, 1.0f, 1.0f);
 float4 const2 = float4(1.0f, 1.0f, 1.0f, 1.0f);
 //...
+```
+
+The compiler will try to pack constants to save space
+For example:
+```hlsl
+float2 const1 = float2(0.1f, 0.2f);
+float2 const2 = float2(0.3f, 0.4f);
+// or
+float3 const1 = float3(0.1f, 0.2f, 0.3f);
+float const2 = 0.4f;
+
+// Is the same as
+float4 const1 = float4(0.1f, 0.2f, 0.3f, 0.4f);
 ```
 
 <br>
