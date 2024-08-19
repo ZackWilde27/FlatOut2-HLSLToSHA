@@ -6,7 +6,7 @@ I've tried to make my version the easier way to write shaders, but if you want s
 <br>
 
 # Zack's High Level Shader Language (HLSL) To FlatOut Shader (SHA)
-It's a python script that converts an HLSL script into assembly and creates an SHA file from it for use in FlatOut 1 or 2.
+It's a python script that converts an HLSL script to assembly and creates an SHA file from it for use in FlatOut 1 or 2.
 <br>
 *(It was originally made for 2 but I checked and the first game uses the exact same format)*
 
@@ -186,12 +186,12 @@ float4 myFloat = ((colour + specular) * lighting) + AMBIENT;
 ```
 
 Also the destination is used to store the immediate results, so it can't be part of the equation unless it's in the first operation
-```
+```hlsl
 // myFloat will get overwritten with (colour + specular) before the multiply, losing the value that was stored in there.
-float4 myFloat = colour + specular * myFloat;
+myFloat = colour + specular * myFloat;
 
 // This one shouldn't cause problems
-float4 myFloat = specular * myFloat + colour;
+myFloat = specular * myFloat + colour;
 ```
 
 <br>
