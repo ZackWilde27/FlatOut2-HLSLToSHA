@@ -243,6 +243,7 @@ float4 var2 = ? AMBIENT : SHADOW;
 
 ### Defines
 Defines can be used to replace any word with anything else
+
 They can't take any arguments, but otherwise it's standard C syntax
 ```hlsl
 #define with +
