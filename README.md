@@ -204,7 +204,7 @@ Modifiers are addons to instructions, allowing you to do more in a single instru
 - x2 : multiply the result by 2
 - x4 : multiply the result by 4
 <br>
-Each of these math modifiers can be used in either function form, exactly like saturate, or in its math expression form. This is the only case where 2 math expressions can be on one line.
+Each of these math modifiers can be used in either function form, exactly like saturate, or in its math expression form.
 
 ```hlsl
 myVar = d2(specular * FRESNEL);
@@ -321,6 +321,10 @@ float4 var1 = "c1";
 var1 = "c2" + "c1";
 // or even
 "r0.a" = dot("c2", "c1");
+
+// This can be combined with defines to create keywords that are specific to your shader
+#define AMBIENT "v0"
+#define SHADOW "c2"
 ```
 
 <br>
@@ -329,7 +333,7 @@ Lastly, there are some special constants that the game uses, those can be access
 - SHADOW : The shadow mask of the track
 - AMBIENT : Ambient lighting
 - FRESNEL : Fresnel term
-- BLEND : The car body shaders use a texture to blend between clean and dirt
+- BLEND : The car body shaders use vertex colours to blend between clean and dirt
 - EXTRA : From what I can tell it's either unused or a duplicate of something else
 
 <br><br>
