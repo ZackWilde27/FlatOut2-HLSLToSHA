@@ -243,6 +243,7 @@ float4 var2 = ? AMBIENT : SHADOW;
 
 ### Defines
 Defines can be used to replace any word with anything else
+They can't take any arguments, but otherwise it's standard C syntax
 ```hlsl
 #define with +
 
@@ -251,7 +252,7 @@ float4 PixelShader(chips, dip)
   return chips with dip;
 }
 ```
-They must be placed outside of the shader functions, and can't take any arguments, but otherwise it's standard C syntax
+
 
 <br>
 
@@ -368,7 +369,8 @@ float4 const2 = float4(1.0f, 1.0f, 1.0f, 1.0f);
 //...
 ```
 
-The compiler will try to pack constants to save space
+The compiler will pack constants with fewer than 4 components together to be as efficient as possible
+
 For example:
 ```hlsl
 float2 const1 = float2(0.1f, 0.2f);
