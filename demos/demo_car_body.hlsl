@@ -4,14 +4,17 @@
 float4 vsMainD3D9(float3 pos : POSITION, float3 nrm : NORMAL, float4 diff : COLOR, float2 uv : TEXCOORD)
 {
     // The UVs are just passed through to 2D textures
-    colour.uv = TEXCOORD.xy;
-    dirt.uv = TEXCOORD.xy;
+    colour.uv = uv.xy;
+    dirt.uv = uv.xy;
 
     // Cubemaps use a direction to sample the texture instead of x and y.
-    lighting.xyz = LocalToWorld(nrm);
+    float3 worldNormal = LocalToWorld(nrm)
+    lighting.xyz = worldNormal;
 
-    // There's no reflect instruction so you'll have to write that code yourself or take it from the original shader and wrap it in an asm{}
-    specular.xyz = mySuperAwesomeReflectFunction(nrm);
+    // Calculate the reflection vector for the specular cubemap
+    float4 incident = pos - CAMERA;
+    incident = normalize(incident);
+    specular.xyz = reflect(incident, worldNormal);
 
     // Also you can pass some extra data to the pixel shader through colour registers.
     // These will be interpolated between vertices to get the value in the pixel shader
@@ -19,9 +22,21 @@ float4 vsMainD3D9(float3 pos : POSITION, float3 nrm : NORMAL, float4 diff : COLO
     FRESNEL = mySuperAwesomeFresnelFunction(nrm);
     // The blend comes from the COLOR input
     BLEND = diff.a;
-    // I'm still figuring out the constants related to the ambient calculations
-    AMBIENT = pos.zzz;
-    EXTRA = nrm;
+
+    // Doesn't do anything, I just haven't implemented declaring yet.
+    float3 inAmbient = nrm;
+
+    // Still figuring out what these ambient constants mean
+    // I wrote it in assembly on the main page but here's the string version
+    inAmbient.x = dot(worldNormal, "c17");
+    inAmbient.y = dot(worldNormal, "c18");
+    inAmbient.z = dot(worldNormal, "c19");
+
+    inAmbient.x = sqrt(inAmbient.x);
+    inAmbient.y = sqrt(inAmbient.y);
+    inAmbient.z = sqrt(inAmbient.z);
+
+    AMBIENT = inAmbient;
 
     return WorldToView(pos);
 }
