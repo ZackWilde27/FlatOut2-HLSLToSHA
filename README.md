@@ -82,7 +82,7 @@ float4 PixelShader(float4 colour, float4 specular, float4 dirt, float4 lighting)
 ## Defining the Vertex Shader
 The vertex shader can be called VertexShader, vsMainD3D9, vsMain, or just main
 
-It returns the position of the vertex in view space
+It returns the position of the vertex in screen space
 ```hlsl
 float4 VertexShader()
 {
@@ -242,15 +242,14 @@ float4 var2 = ? AMBIENT : SHADOW;
 <br>
 
 ### Defines
-Defines can be used to replace any word with anything else
-
-They can't take any arguments, but otherwise it's standard C syntax
+Defines can be used to replace any word with anything else, it's just like C
 ```hlsl
-#define with +
+#define IN_AMBIENTONE "c17"
+#define ExtremelyTediousMethodForMultiplication(a, b) a * b
 
-float4 PixelShader(chips, dip)
+float4 PixelShader(colour, specular)
 {
-  return chips with dip;
+  return ExtremelyTediousMethodForMultiplication(colour, specular)
 }
 ```
 
@@ -275,6 +274,18 @@ float4 psMainD3D9(float4 colour, float4 specular)
 
   return myDot(myVar, specular);
 }
+```
+
+<br>
+
+### Meanwhile
+The ```meanwhile``` keyword can be used to perform two instructions at the same time
+
+They must write to different places, though the inputs can be the same
+```hlsl
+var1.rgb = colour.a;
+meanwhile var1.a = colour.a;
+// You can't have more than 2 instructions run in parallel
 ```
 
 
@@ -462,7 +473,7 @@ The game supplies 2 matrices for you to transform with, and to make the whole th
 
 ```hlsl
 float4 var2 = LocalToWorld(pos);
-float4 var1 = WorldToView(pos);
+float4 var1 = WorldToScreen(pos);
 ```
 
 <br>
@@ -531,19 +542,19 @@ float4 VertexShader(float3 pos : POSITION, float3 nrm : NORMAL, float4 diff : CO
   }
   AMBIENT = GetAmbient(worldNormal);
 
-  return WorldToView(pos);
+  return WorldToScreen(pos);
 }
 
 
 float4 PixelShader(float4 colour, float4 specular, float4 dirt, float4 lighting)
 {
-    float4 brightness = float4(0.0f, 0.0f, 0.0f, 0.75f); // a = ambient multiplier
+    float brightness = 0.75f;
 
     float4 c = specular * FRESNEL;
     float4 l = lerp(colour, dirt, BLEND);
     c = saturate(c + l);
     l = lighting * SHADOW;
-    l = saturate(mad(AMBIENT, brightness.a, l));
+    l = saturate(mad(AMBIENT, brightness, l));
     return c * l;
 }
 ```
