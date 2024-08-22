@@ -9,7 +9,7 @@ float4 VertexShader(float3 pos : SV_Position, float2 uv1 : TEXCOORD0, float2 uv2
     tex0.uv = uv1.xy;
     tex1.uv = uv2.xy;
 
-    return WorldToView(pos);
+    return WorldToScreen(pos);
 }
 
 float4 PixelShader(float4 tex0, float4 tex1)
