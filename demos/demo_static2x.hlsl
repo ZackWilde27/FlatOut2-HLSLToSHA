@@ -4,15 +4,15 @@ float4 VertexShader(float3 pos : SV_Position, float4 diff : COLOR, float2 uv : T
 {
     AMBIENT = diff.xyz
     FRESNEL = diff.a;
-    colour.uv = uv;
+    colour.uv = uv.uv;
     
-    return WorldToView(pos);
+    return WorldToScreen(pos);
 }
 
 float4 PixelShader(colour)
 {
-    float4 c = saturate(x2(colour * AMBIENT));
-    // There's no way to add the "+" prefix to an instruction, I'm working on it
-    c.a = colour * AMBIENT;
+    float4 c;
+    c.rgb = saturate(x2(colour * AMBIENT));
+    meanwhile c.a = colour * AMBIENT;
     return c;
 }
