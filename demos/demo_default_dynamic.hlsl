@@ -11,9 +11,7 @@ float4 VertexShader(float3 pos : SV_Position, float2 nrm : NORMAL, float2 uv : T
 
     worldNormal.a = constantOne;
 
-    // Doesn't do anything, I just haven't implemented declaring yet.
-    float3 inAmbient = nrm;
-
+    float3 inAmbient;
     // Still figuring out what these ambient constants mean
     // I wrote it in assembly on the main page but here's the string version
     inAmbient.x = dot(worldNormal, "c17");
@@ -26,7 +24,7 @@ float4 VertexShader(float3 pos : SV_Position, float2 nrm : NORMAL, float2 uv : T
 
     AMBIENT = inAmbient;
 
-    return WorldToView(pos);
+    return WorldToScreen(pos);
 }
 
 float4 PixelShader(float4 colour, float4 diffuse)
