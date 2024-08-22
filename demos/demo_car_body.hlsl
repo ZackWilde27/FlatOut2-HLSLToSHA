@@ -23,9 +23,7 @@ float4 vsMainD3D9(float3 pos : POSITION, float3 nrm : NORMAL, float4 diff : COLO
     // The blend comes from the COLOR input
     BLEND = diff.a;
 
-    // Doesn't do anything, I just haven't implemented declaring yet.
     float3 inAmbient;
-
     // Still figuring out what these ambient constants mean
     // I wrote it in assembly on the main page but here's the string version
     inAmbient.x = dot(worldNormal, "c17");
