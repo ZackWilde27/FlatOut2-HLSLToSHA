@@ -24,7 +24,7 @@ float4 vsMainD3D9(float3 pos : POSITION, float3 nrm : NORMAL, float4 diff : COLO
     BLEND = diff.a;
 
     // Doesn't do anything, I just haven't implemented declaring yet.
-    float3 inAmbient = nrm;
+    float3 inAmbient;
 
     // Still figuring out what these ambient constants mean
     // I wrote it in assembly on the main page but here's the string version
@@ -38,7 +38,7 @@ float4 vsMainD3D9(float3 pos : POSITION, float3 nrm : NORMAL, float4 diff : COLO
 
     AMBIENT = inAmbient;
 
-    return WorldToView(pos);
+    return WorldToScreen(pos);
 }
 
 // The pixel shader can be called PixelShader, psMainD3D9, or psMain
