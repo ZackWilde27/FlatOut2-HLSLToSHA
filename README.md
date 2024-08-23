@@ -10,6 +10,15 @@ It's a python script that converts an HLSL script to assembly and creates an SHA
 <br>
 *(It was originally made for 2 but I checked and the first game uses the exact same format)*
 
+Table of Contents
+- [Using the Script](https://github.com/ZackWilde27/FlatOut2-HLSLToSHA/blob/main/README.md#using-the-script)
+- [Defining the PixelShader](https://github.com/ZackWilde27/FlatOut2-HLSLToSHA/blob/main/README.md#defining-the-pixel-shader)
+- [Defining the VertexShader](https://github.com/ZackWilde27/FlatOut2-HLSLToSHA/blob/main/README.md#defining-the-vertex-shader)
+- [Writing the PixelShader](https://github.com/ZackWilde27/FlatOut2-HLSLToSHA/blob/main/README.md#writing-the-pixel-shader)
+- [Writing the VertexShader](https://github.com/ZackWilde27/FlatOut2-HLSLToSHA/blob/main/README.md#writing-the-vertex-shader)
+- [Troubleshooting](https://github.com/ZackWilde27/FlatOut2-HLSLToSHA/blob/main/README.md#troubleshooting)
+- [Using the Decompiler](https://github.com/ZackWilde27/FlatOut2-HLSLToSHA/blob/main/README.md#using-the-decompiler)
+
 <br>
 
 ## Using the Script
@@ -584,3 +593,14 @@ There are some very specific limitations with the assembly [which are documented
 Use ```ZacksShaderValidator.exe``` to check if the shader will run in-game.
 
 Clicking 'Validate SHA' will prompt you for an SHA file to validate, then show the errors in a message box.
+
+<br><br>
+
+# Using the Decompiler
+It's a python script that turns an SHA file back into HLSL meant for my compiler.
+
+It's meant to make templates from the original shaders automatically, but it can also be used to verify that the compiler wrote what you told it, just in case.
+
+At the start it'll prompt you for an SHA file to decompile, the resulting hlsl file will be in the same place with _decompiled added to the name.
+
+I'm still going to be focusing on the compiler until it's done, but I got the decompiler working well enough that I decided to release it
