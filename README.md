@@ -86,6 +86,11 @@ float4 PixelShader(float4 colour, float4 specular, float4 dirt, float4 lighting)
 }
 ```
 
+If it uses an instruction other than ```tex``` to sample the texture, it can be specified instead of the type, such as ```texkill```:
+```hlsl
+float4 PixelShader(float4 colour, texkill specular) {}
+```
+
 <br>
 
 ## Defining the Vertex Shader
@@ -123,6 +128,28 @@ float4 VertexShader(float3 pos : POSITION, float2 uv1 : TEXCOORD0, float2 uv2 : 
 
 }
 ```
+
+<br>
+
+## Defining the Technique
+You have the choice to add a Technique/Pass to your shader if the original shader needs more setup than just the shaders and textures
+
+For example, setting up the technique for the pro_sunflare shader would look like this:
+```hlsl
+float4 VertexShader() { ... }
+
+float4 PixelShader() { ... }
+
+Technique T0
+{
+  Pass P0
+  {
+    MinFilter[1] = Point;
+    MagFilter[1] = Point;
+  }
+}
+```
+
 <br>
 <br>
 
@@ -391,10 +418,12 @@ Also, you can have up to 64 constants, which can hold misc. data for use in the 
 ```hlsl
 float4 const1 = float4(0.0f, 0.0f, 1.0f, 1.0f);
 float4 const2 = float4(1.0f, 1.0f, 1.0f, 1.0f);
-//...
+// In the vertex shader, you can have integer and boolean constants as well
+int4 const3 = int4(1, 2, 3, 4);
+bool2 const4 = bool2(true, false);
 ```
 
-The compiler will pack constants with fewer than 4 components together to be as efficient as possible
+The compiler will pack constants of the same type with fewer than 4 components together to be as efficient as possible
 
 For example:
 ```hlsl
@@ -410,25 +439,60 @@ float4 const1 = float4(0.1f, 0.2f, 0.3f, 0.4f);
 
 <br>
 
+### Arrays
+The main way it differs from HLSL is that arrays are defined with ```[]``` instead of ```{}```, like Python or Javascript
+```hlsl
+float3 list1[1] = [ float3(1.0f, 1.0f, 1.0f) ];
+
+float2 myList[] = [
+  float2(1.0f, 0.0f),
+  float2(0.0f, 1.0f),
+  float2(1.0f, 0.0f)
+];
+```
+
+They can have items of varying type but they can't be packed together
+```hlsl
+float4 myList[] = [
+  float2(1.0f, 0.0f),
+  float3(0.5f, 0.25f, 0.125f),
+  0.75f
+];
+```
+
+Then the array can be indexed as normal, though math can't be put in there.
+```hlsl
+// floats will be rounded to the nearest integer to get the index
+var2 = myList[var1.x];
+```
+
+<br>
+
 ### Intrinsic Functions
 
 The supported intrinsic functions are as follows:
 - abs()
 - clamp()
+- degrees()
 - distance() / dst()
 - dot()
 - exp2() (exp2_full() to use the accurate but expensive version)
+- floor()
 - frac()
 - length()
+- lerp()
+- lit()
 - log2() (log2_full() to use the accurate but expensive version)
 - mad()
 - max()
 - min()
 - normalize()
+- radians()
 - reflect()
 - rcp()
 - rsqrt()
 - sqrt()
+- step()
 
 These have to be structured ```xyz = function()``` or ```return function()```
 
@@ -535,8 +599,15 @@ float4 VertexShader(float3 pos : POSITION, float3 nrm : NORMAL, float4 diff : CO
 
   // The blend factor for the car body comes from the COLOR input
   BLEND = diff;
-  // TODO: Add fresnel calculations
-  FRESNEL = mySuperAwesomeFresnelFunction();
+
+  // I'm still trying to figure out the fresnel calculations,
+  // The theory is that the dot product between the incident and normal should give the fresnel, but something isn't working here
+  float4 f;
+  f.x = dot(incident, worldNormal);
+  f.x = abs(f.x);
+  // Raise to the power of 3
+  f.x = f.x * f.x * f.x;
+  FRESNEL = f.x;
 
   // I'm still figuring out the input ambient constants and how those should work, for now I'd use a function with assembly
   float3 GetAmbient(float3 normal)
