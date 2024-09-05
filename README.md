@@ -343,7 +343,7 @@ float4 psMainD3D9(float4 colour, float4 specular, float4 blend)
 ### Meanwhile
 The ```meanwhile``` keyword can be used to perform two instructions at the same time
 
-One of them needs to write to .rgb, and the other needs to write to .a destination
+One of them needs to write to .rgb, and the other needs to write to .a
 ```hlsl
 var1.rgb = colour.a;
 meanwhile var2.a = colour.a * 2;
