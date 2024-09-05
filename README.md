@@ -12,8 +12,11 @@ It's a python script that converts an HLSL script to assembly and creates an SHA
 
 Table of Contents
 - [Using the Script](https://github.com/ZackWilde27/FlatOut2-HLSLToSHA/blob/main/README.md#using-the-script)
+
 - [Defining the PixelShader](https://github.com/ZackWilde27/FlatOut2-HLSLToSHA/blob/main/README.md#defining-the-pixel-shader)
+
 - [Defining the VertexShader](https://github.com/ZackWilde27/FlatOut2-HLSLToSHA/blob/main/README.md#defining-the-vertex-shader)
+
 - [Writing the PixelShader](https://github.com/ZackWilde27/FlatOut2-HLSLToSHA/blob/main/README.md#writing-the-pixel-shader)
 	- [Variables](https://github.com/ZackWilde27/FlatOut2-HLSLToSHA/tree/main?tab=readme-ov-file#variables)
 	- [Intrinsic Functions](https://github.com/ZackWilde27/FlatOut2-HLSLToSHA/tree/main?tab=readme-ov-file#intrinsic-functions)
@@ -26,6 +29,7 @@ Table of Contents
 	- [Splitting Vectors](https://github.com/ZackWilde27/FlatOut2-HLSLToSHA/tree/main?tab=readme-ov-file#splitting-vectors)
 	- [Assembly](https://github.com/ZackWilde27/FlatOut2-HLSLToSHA/tree/main?tab=readme-ov-file#assembly)
 	- [Strings](https://github.com/ZackWilde27/FlatOut2-HLSLToSHA/tree/main?tab=readme-ov-file#strings)
+
 - [Writing the VertexShader](https://github.com/ZackWilde27/FlatOut2-HLSLToSHA/blob/main/README.md#writing-the-vertex-shader)
 	- [Returning](https://github.com/ZackWilde27/FlatOut2-HLSLToSHA/tree/main?tab=readme-ov-file#returning)
 	- [Variables](https://github.com/ZackWilde27/FlatOut2-HLSLToSHA/tree/main?tab=readme-ov-file#variables-1)
@@ -36,7 +40,9 @@ Table of Contents
 	- [Transforming](https://github.com/ZackWilde27/FlatOut2-HLSLToSHA/tree/main?tab=readme-ov-file#transforming)
 	- [If statements](https://github.com/ZackWilde27/FlatOut2-HLSLToSHA/tree/main?tab=readme-ov-file#if-statements-1)
 	- [Splitting Vectors](https://github.com/ZackWilde27/FlatOut2-HLSLToSHA/tree/main?tab=readme-ov-file#splitting-vectors-1)
+
 - [Troubleshooting](https://github.com/ZackWilde27/FlatOut2-HLSLToSHA/blob/main/README.md#troubleshooting)
+
 - [Using the Decompiler](https://github.com/ZackWilde27/FlatOut2-HLSLToSHA/blob/main/README.md#using-the-decompiler)
 
 <br>
@@ -61,7 +67,7 @@ loop = ""
 ```
 Leaving them as "" means that it will ask you when the script runs, so you can set it up to ask you every question or none at all.
 
-It's actually a python script so theoretically any variable from the script can be changed in there
+It's actually a python script so theoretically any variable from the script can be changed in there.
 
 <br><br>
 
@@ -108,6 +114,7 @@ float4 PixelShader(float4 colour, float4 specular, float4 dirt, float4 lighting)
 
 If it uses an instruction other than ```tex``` to sample the texture, it can be specified instead of the type, such as ```texkill```:
 ```hlsl
+// texkill means that if any of its uv coordinates are less than 0, don't render this pixel
 float4 PixelShader(float4 colour, texkill specular) {}
 ```
 
@@ -189,6 +196,7 @@ float4 var3 = dirt; // This will be treated as var2, overwriting the previous le
 
 Though, you can have up to 5 constants, which can hold misc. data for use in the shader (It's actually 8, but the game reserves the first 3)
 ```hlsl
+// Everything is clamped between -1 and 1, at least in the pixel shader.
 const float4 const1 = float4(0.0f, 0.0f, 1.0f, 1.0f);
 const float4 const2 = float4(1.0f, 1.0f, 1.0f, 1.0f);
 // the const keyword is optional
@@ -298,14 +306,13 @@ float4 var2 = ? AMBIENT : SHADOW;
 <br>
 
 ### Defines
-Defines can be used to replace any word with anything else, it's just like C
+Defines can be used to replace any word with anything else, just like C
 ```hlsl
-#define IN_AMBIENTONE "c17"
-#define ExtremelyTediousMethodForMultiplication(a, b) a * b
+#define Tint(base, tintval) base * tintval
 
 float4 PixelShader(colour, specular)
 {
-  return ExtremelyTediousMethodForMultiplication(colour, specular)
+  return Tint(specular, colour);
 }
 ```
 
@@ -316,19 +323,18 @@ float4 PixelShader(colour, specular)
 In the pixel shader, there's no way to call functions, so these are defines that can have multiple lines, as-in they will copy+paste the code inside.
 All functions have to return a value, because it has to be structured just like the instrinsic functions
 ```hlsl
-float4 psMainD3D9(float4 colour, float4 specular)
+float4 psMainD3D9(float4 colour, float4 specular, float4 blend)
 {
-  // The parameter types are optional
-  float4 myDot(a, b)
+  float4 scratchValue; // reserves r0 for the if statement  
+
+  // Implements (a > b) ? ifA : ifB;
+  float4 GreaterThan(a, b, ifA, ifB)
   {
-    a = colour * b;
-    return dot(a, b);
+    scratchValue.a = a - b + 0.5f;
+    return ? ifA : ifB;
   }
 
-  // It's supposed to be possible to write to a texture register in the pixel shader but in my experience the game doesn't compile it
-  float4 myVar = colour;
-
-  return myDot(myVar, specular);
+  return GreaterThan(blend, 0.5f, colour, specular);
 }
 ```
 
@@ -337,10 +343,10 @@ float4 psMainD3D9(float4 colour, float4 specular)
 ### Meanwhile
 The ```meanwhile``` keyword can be used to perform two instructions at the same time
 
-They must write to different places, though the inputs can be the same
+One of them needs to write to .rgb, and the other needs to write to .a destination
 ```hlsl
 var1.rgb = colour.a;
-meanwhile var1.a = colour.a;
+meanwhile var2.a = colour.a * 2;
 // You can't have more than 2 instructions run in parallel
 ```
 
@@ -349,10 +355,10 @@ meanwhile var1.a = colour.a;
 
 ### Splitting Vectors
 
-In ps.1.1, splitting can only be done if it's the alpha channel
+In ps.1.1, splitting can only be done if it's ```.xyzw/rgba```, ```.xyz/rgb```, or ```.w/a```
 ```hlsl
 myVar = SHADOW.a;
-myVar = AMBIENT.aaaa * myVar.a;
+myVar = AMBIENT.rgb * myVar; // Which is the same as myVar.rgba
 
 myVar = SHADOW.x; // The game can't compile this
 ```
@@ -438,29 +444,18 @@ Also, you can have up to 64 constants, which can hold misc. data for use in the 
 ```hlsl
 float4 const1 = float4(0.0f, 0.0f, 1.0f, 1.0f);
 float4 const2 = float4(1.0f, 1.0f, 1.0f, 1.0f);
+
 // In the vertex shader, you can have integer and boolean constants as well
-int4 const3 = int4(1, 2, 3, 4);
-bool2 const4 = bool2(true, false);
+int4 const3 = int4(1, 2, 3, 4); // ints can be used to index into arrays
+bool2 const4 = bool2(true, false); // I don't know what bools are used for
 ```
 
-The compiler will pack constants of the same type with fewer than 4 components together to be as efficient as possible
-
-For example:
-```hlsl
-float2 const1 = float2(0.1f, 0.2f);
-float2 const2 = float2(0.3f, 0.4f);
-// or
-float3 const1 = float3(0.1f, 0.2f, 0.3f);
-float const2 = 0.4f;
-
-// Is the same as
-float4 const1 = float4(0.1f, 0.2f, 0.3f, 0.4f);
-```
 
 <br>
 
+
 ### Arrays
-The main way it differs from HLSL is that arrays are defined with ```[]``` instead of ```{}```, like Python or Javascript
+The main way it differs from HLSL is that arrays are defined with ```[]``` instead of ```{}```, like Python or JavaScript
 ```hlsl
 float3 list1[1] = [ float3(1.0f, 1.0f, 1.0f) ];
 
@@ -473,18 +468,20 @@ float2 myList[] = [
 
 They can have items of varying type but they can't be packed together
 ```hlsl
-float4 myList[] = [
+float4 myList[] =
+[
   float2(1.0f, 0.0f),
   float3(0.5f, 0.25f, 0.125f),
   0.75f
 ];
 ```
 
-Then the array can be indexed as normal, though math can't be put in there.
+Then the array can be indexed as normal, though the index can't have math in it
 ```hlsl
 // floats will be rounded to the nearest integer to get the index
 var2 = myList[var1.x];
 ```
+
 
 <br>
 
@@ -572,7 +569,7 @@ float4 var1 = WorldToScreen(pos);
 <br>
 
 ### If statements
-If statements are technically possible, but they are extemely limited, and in a completely different way.
+If statements are possible, but extemely limited, and in a completely different way.
 ```hlsl
 float4 var1 = pos;
 float4 var2 = var1.x > pos.y ?;
