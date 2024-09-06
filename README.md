@@ -327,14 +327,18 @@ float4 psMainD3D9(float4 colour, float4 specular, float4 blend)
 {
   float4 scratchValue; // reserves r0 for the if statement  
 
+  // Looks like there's a bug with inserting constants inside functions, I'm working on it
+  float const1 = 0.5f;
+  float const2 = 0.25f;
+
   // Implements (a > b) ? ifA : ifB;
   float4 GreaterThan(a, b, ifA, ifB)
   {
-    scratchValue.a = a - b + 0.5f;
+    scratchValue.a = a - b + const1;
     return ? ifA : ifB;
   }
 
-  return GreaterThan(blend, 0.5f, colour, specular);
+  return GreaterThan(blend, const2, colour, specular);
 }
 ```
 
@@ -481,7 +485,6 @@ Then the array can be indexed as normal, though the index can't have math in it
 // floats will be rounded to the nearest integer to get the index
 var2 = myList[var1.x];
 ```
-
 
 <br>
 
