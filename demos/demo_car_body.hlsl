@@ -3,16 +3,17 @@
 // The vertex shader can be called VertexShader, vsMainD3D9, vsMain, or just main
 float4 vsMainD3D9(float3 pos : POSITION, float3 nrm : NORMAL, float4 diff : COLOR, float2 uv : TEXCOORD)
 {
-    // The UVs are just passed through to 2D textures
+    // The UVs can just be passed through to 2D textures
     colour.uv = uv.xy;
     dirt.uv = uv.xy;
 
     // Cubemaps use a direction to sample the texture instead of x and y.
-    float3 worldNormal = LocalToWorld(nrm)
+    float3 worldNormal = RotateToWorld(nrm)
     lighting.xyz = worldNormal;
 
     // Calculate the reflection vector for the specular cubemap
-    float4 incident = pos - CAMERA;
+    float3 worldPos = LocalToWorld(pos);
+    float4 incident = worldPos - CAMERA;
     incident = normalize(incident);
     specular.xyz = reflect(incident, worldNormal);
 
@@ -26,17 +27,13 @@ float4 vsMainD3D9(float3 pos : POSITION, float3 nrm : NORMAL, float4 diff : COLO
     float3 inAmbient;
     // Still figuring out what these ambient constants mean
     // I wrote it in assembly on the main page but here's the string version
-    inAmbient.x = dot(worldNormal, "c17");
-    inAmbient.y = dot(worldNormal, "c18");
-    inAmbient.z = dot(worldNormal, "c19");
-
-    inAmbient.x = sqrt(inAmbient.x);
-    inAmbient.y = sqrt(inAmbient.y);
-    inAmbient.z = sqrt(inAmbient.z);
+    inAmbient.x = sqrt(dot(worldNormal, "c17"));
+    inAmbient.y = sqrt(dot(worldNormal, "c18"));
+    inAmbient.z = sqrt(dot(worldNormal, "c19"));
 
     AMBIENT = inAmbient;
 
-    return WorldToScreen(pos);
+    return LocalToScreen(pos);
 }
 
 // The pixel shader can be called PixelShader, psMainD3D9, or psMain
