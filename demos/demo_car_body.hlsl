@@ -20,7 +20,7 @@ float4 vsMainD3D9(float3 pos : POSITION, float3 nrm : NORMAL, float4 diff : COLO
     // Also you can pass some extra data to the pixel shader through colour registers.
     // These will be interpolated between vertices to get the value in the pixel shader
     // FRESNEL and BLEND are your scalar values, AMBIENT and EXTRA are your colour values.
-    worldNormal.w = dot(worldPos, worldNormal);
+    worldNormal.w = dot(incident, worldNormal);
     worldNormal.w = abs(worldNormal.w);
     worldNormal.w = 1.0f - worldNormal.w;
 
