@@ -227,6 +227,7 @@ return dot(specular, dirt);
 ### Math
 
 Math is exactly how you'd expect except for the order of operations
+
 In the pixel shader, dividing can only be done by 2
 
 For example:
@@ -509,13 +510,11 @@ The supported intrinsic functions are as follows:
 - sqrt()
 - step()
 
-These have to be structured ```xyz = function()``` or ```return function()```
-
 For example:
 ```hlsl
 float4 myVar = reflect(nrm, pos);
 myVar = mad(uv1.x, uv2.y, diff.z);
-myVar = max(myVar, nrm);
+myVar = max(min(myVar, 1.0f), 0.0f);
 return normalize(nrm);
 ```
 
