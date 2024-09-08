@@ -23,3 +23,11 @@ float4 PixelShader(float4 tex0, float4 tex1, texkill tex2)
 {
     return tex0 * tex1;
 }
+
+Technique T0
+{
+    Pass P0
+    {
+        Zbias = 2;
+    }
+}
