@@ -214,13 +214,11 @@ The supported intrinsic functions are as follows:
 - saturate()
 - mad()
 
-Saturate is the only function that can have math or other functions inside it, the rest have to be structured ```xyz = function()``` or ```return function()```
-
 For example:
 ```hlsl
 float4 myVar = dot(colour, specular);
 myVar = saturate(mad(dirt, specular, lighting));
-myVar = lerp(colour, dirt, lighting.a);
+myVar = lerp(colour, dirt, dot(colour, specular));
 return dot(specular, dirt);
 ```
 
@@ -228,7 +226,8 @@ return dot(specular, dirt);
 
 ### Math
 
-Math is exactly how you'd expect except for the order of operations, and dividing can only be done by 2
+Math is exactly how you'd expect except for the order of operations
+In the pixel shader, dividing can only be done by 2
 
 For example:
 ```hlsl
@@ -327,18 +326,14 @@ float4 psMainD3D9(float4 colour, float4 specular, float4 blend)
 {
   float4 scratchValue; // reserves r0 for the if statement  
 
-  // Looks like there's a bug with inserting constants inside functions, I'm working on it
-  float const1 = 0.5f;
-  float const2 = 0.25f;
-
   // Implements (a > b) ? ifA : ifB;
   float4 GreaterThan(a, b, ifA, ifB)
   {
-    scratchValue.a = a - b + const1;
+    scratchValue.a = a - b + 0.5f;
     return ? ifA : ifB;
   }
 
-  return GreaterThan(blend, const2, colour, specular);
+  return GreaterThan(blend, 0.25f, colour, specular);
 }
 ```
 
@@ -565,8 +560,10 @@ EXTRA = nrm.xyz;
 The game supplies 2 matrices for you to transform with, and to make the whole thing simpler I made them functions:
 
 ```hlsl
-float4 var2 = LocalToWorld(pos);
-float4 var1 = WorldToScreen(pos);
+float4 var1 = LocalToWorld(pos);
+float4 var2 = RotateToWorld(pos); // Only does the rotation portion of LocalToWorld()
+
+float4 var3 = LocalToScreen(pos);
 ```
 
 <br>
@@ -607,27 +604,27 @@ float4 VertexShader(float3 pos : POSITION, float3 nrm : NORMAL, float4 diff : CO
   colour.uv = uvs.xy;
   dirt.uv = uvs.xy;
 
-  float3 worldNormal = LocalToWorld(nrm);
+  float3 worldNormal = RotateToWorld(nrm);
 
   // The lighting cubemap can just be given the world normal
   lighting.xyz = worldNormal;
 
   // Calculate the reflection vector for the specular cubemap
-  float4 incident = pos - CAMERA;
-  incident = normalize(incident);
+  float4 incident = normalize(pos - CAMERA);
   specular.xyz = reflect(incident, worldNormal);
 
   // The blend factor for the car body comes from the COLOR input
   BLEND = diff;
 
-  // I'm still trying to figure out the fresnel calculations,
-  // The theory is that the dot product between the incident and normal should give the fresnel, but something isn't working here
+  // Fresnel
   float4 f;
-  f.x = dot(incident, worldNormal);
-  f.x = abs(f.x);
-  // Raise to the power of 3
-  f.x = f.x * f.x * f.x;
-  FRESNEL = f.x;
+
+  f.x = abs(dot(incident, worldNormal));
+  f.x = f.x * f.x;
+  // This line is supposed to convert the 0 - 1 to 0.5 - 1, but for some reason it doesn't look like it works, and it's not a compiler issue.
+  f.x = mad(1.0f - f.x, 0.5f, 0.5f);
+  // So I'm doing this instead
+  FRESNEL = max(f.x, 0.5f);
 
   // I'm still figuring out the input ambient constants and how those should work, for now I'd use a function with assembly
   float3 GetAmbient(float3 normal)
@@ -648,13 +645,10 @@ float4 VertexShader(float3 pos : POSITION, float3 nrm : NORMAL, float4 diff : CO
 
 float4 PixelShader(float4 colour, float4 specular, float4 dirt, float4 lighting)
 {
-    float brightness = 0.75f;
-
     float4 c = specular * FRESNEL;
-    float4 l = lerp(colour, dirt, BLEND);
-    c = saturate(c + l);
-    l = lighting * SHADOW;
-    l = saturate(mad(AMBIENT, brightness, l));
+    c = saturate(c + lerp(colour, dirt, BLEND));
+    float4 l = lighting * SHADOW;
+    l = saturate(mad(AMBIENT, 0.75f, l));
     return c * l;
 }
 ```
