@@ -1,38 +1,33 @@
 // default_dynamic template
 
-#define constantOne "c15.z"
-
 float4 VertexShader(float3 pos : SV_Position, float2 nrm : NORMAL, float2 uv : TEXCOORD)
 {
     colour.uv = uv.xy
 
-    float4 worldNormal = LocalToWorld(nrm);
+    float4 worldNormal = RotateToWorld(nrm);
     diffuse.xyz = worldNormal;
 
-    worldNormal.a = constantOne;
+    worldNormal.a = 1.0f;
 
     float3 inAmbient;
     // Still figuring out what these ambient constants mean
     // I wrote it in assembly on the main page but here's the string version
-    inAmbient.x = dot(worldNormal, "c17");
-    inAmbient.y = dot(worldNormal, "c18");
-    inAmbient.z = dot(worldNormal, "c19");
-
-    inAmbient.x = sqrt(inAmbient.x);
-    inAmbient.y = sqrt(inAmbient.y);
-    inAmbient.z = sqrt(inAmbient.z);
+    inAmbient.x = sqrt(dot(worldNormal, "c17"));
+    inAmbient.y = sqrt(dot(worldNormal, "c18"));
+    inAmbient.z = sqrt(dot(worldNormal, "c19"));
 
     AMBIENT = inAmbient;
 
-    return WorldToScreen(pos);
+    return LocalToScreen(pos);
 }
 
 float4 PixelShader(float4 colour, float4 diffuse)
 {
     // lighting
-    float4 var = mad(diffuse.a, SHADOW, AMBIENT) / 2
+    float4 var;
 
-    var.a = colour.a;
+    var.rgb = mad(diffuse.a, SHADOW, AMBIENT) / 2
+    meanwhile var.a = colour.a;
 
     // Don't know what these are
     var = saturate(var * "c1");
