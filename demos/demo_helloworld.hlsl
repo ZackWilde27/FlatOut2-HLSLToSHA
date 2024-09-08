@@ -2,7 +2,7 @@
 
 float4 VertexShader(float3 pos : SV_Position)
 {
-    return WorldToScreen(pos);
+    return LocalToScreen(pos);
 }
 
 float4 PixelShader()
