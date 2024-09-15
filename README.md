@@ -217,7 +217,7 @@ The supported intrinsic functions are as follows:
 For example:
 ```hlsl
 float4 myVar = dot(colour, specular);
-myVar = saturate(mad(dirt, specular, lighting));
+myVar = saturate(mad(dirt, specular, lighting.a));
 myVar = lerp(colour, dirt, dot(colour, specular));
 return dot(specular, dirt);
 ```
@@ -233,7 +233,7 @@ In the pixel shader, dividing can only be done by 2
 For example:
 ```hlsl
 myVar = colour + specular;
-myVar *= lighting;
+myVar *= lighting.a;
 myVar -= dirt;
 myVar = colour / 2;
 
@@ -244,9 +244,9 @@ myVar = 1-colour * 1-specular;
 
 When putting multiple math statements in a line, it does not follow the order of operations, it will perform each operation in the order you wrote it
 ```hlsl
-float4 myFloat = colour + specular * lighting + AMBIENT;
+float4 myFloat = colour + specular * lighting.a + AMBIENT;
 // from the compiler's perspective looks like this:
-float4 myFloat = ((colour + specular) * lighting) + AMBIENT;
+float4 myFloat = ((colour + specular) * lighting.a) + AMBIENT;
 ```
 
 Also the destination is used to store the immediate results, so it can't be part of the equation unless it's in the first operation
@@ -283,7 +283,7 @@ myVar = specular * FRESNEL * 2;
 // half() == d2()
 // double() == x2()
 // quad() == x4()
-myVar = half(specular * fresnel)
+myVar = half(specular * FRESNEL)
 
 // Also, they can be stacked, and in any order
 myVar = x2(d2(saturate(x4(specular * FRESNEL))));
@@ -618,13 +618,10 @@ float4 VertexShader(float3 pos : POSITION, float3 nrm : NORMAL, float4 diff : CO
 
   // Fresnel
   float4 f;
-
   f.x = abs(dot(incident, worldNormal));
-  f.x = f.x * f.x;
-  // This line is supposed to convert the 0 - 1 to 0.5 - 1, but for some reason it doesn't look like it works, and it's not a compiler issue.
-  f.x = mad(1.0f - f.x, 0.5f, 0.5f);
-  // So I'm doing this instead
-  FRESNEL = max(f.x, 0.5f);
+  f.x = 1.0f - f.x;
+  f.y = f.x * f.x * f.x;
+  FRESNEL = mad(f.y, 0.5f, 0.5f);
 
   // I'm still figuring out the input ambient constants and how those should work, for now I'd use a function with assembly
   float3 GetAmbient(float3 normal)
@@ -647,7 +644,7 @@ float4 PixelShader(float4 colour, float4 specular, float4 dirt, float4 lighting)
 {
     float4 c = specular * FRESNEL;
     c = saturate(c + lerp(colour, dirt, BLEND));
-    float4 l = lighting * SHADOW;
+    float4 l = lighting.a * SHADOW;
     l = saturate(mad(AMBIENT, 0.75f, l));
     return c * l;
 }
