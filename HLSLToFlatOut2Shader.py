@@ -1,5 +1,5 @@
 # Zack's HLSL to FlatOut SHA
-version = "v2.2"
+version = "v2.21"
 # Am I particularly proud of this code? uhh
 
 try:
@@ -527,60 +527,61 @@ def CompileOperand_Partial(string, ext="", dst="", components=4):
     if secondOpinion:
         return secondOpinion
 
-    for av in hfuncs:
-        if av.name + "(" in string:
-            dex = string.index(av.name + "(") + len(av.name) + 1
-            end = GetParEnd(string, dex)
-            inner = [item.strip() for item in ArraySplit(string[dex:end])]
-            end = av.code
+    if "(" in string:
+        for av in hfuncs:
+            if string[:string.index("(")] == av.name:
+                dex = string.index(av.name + "(") + len(av.name) + 1
+                end = GetParEnd(string, dex)
+                inner = [item.strip() for item in ArraySplit(string[dex:end])]
+                end = av.code
 
-            # When calling a function that reads from the destination, it checks if you gave it a write-only register and will use an unused variable register if that's the case.
-            if ("%z" in end and dst[0] != 'r') or "%z." in end:
-                newDst = "r" + str(rStatus.index(False))
-                end = end.replace("%z", newDst)
-            else:
-                end = end.replace("%z", dst)
-
-            end = end.replace("%0", dst)
-
-            if len(end.split("\t")) > 2:
-                end = end[:end.rfind("\t")] + ext + "\t" + end[end.rfind("\t") + 1:]
-            else:
-                end = end.replace("\t", ext + "\t")
-
-            end = end.replace("%tn0", str(components) if "." not in dst else str(len(dst[dst.index(".") + 1:])))
-
-            prepend = ""
-            for dex, item in enumerate(inner):
-                if any([IndexOfSafe(item, char) != -1 for char in "+-*/("]):
-                        if not (item == "-" and inner[dex - 1] == "1"):
-                            that = CompileOperand(item, ext, AllocateRegister(reg), components)
-                            reg += 1
-                            prepend += that[1]
-                            inner[dex] = "\"" + that[0] + "\""
-                            item = "\"" + that[0] + "\""
-
-                if item[0] in "0123456789":
-                    if item[:2] != "1-":
-                        item = "\"" + AddConstant("constant_" + str(constants), item, "f" if item[-1] == "f" else "i") + "\""
-
-                if "." in item:
-                    item = item.split(".")
-                    item.append(len(item[1]))
+                # When calling a function that reads from the destination, it checks if you gave it a write-only register and will use an unused variable register if that's the case.
+                if ("%z" in end and dst[0] != 'r') or "%z." in end:
+                    newDst = "r" + str(rStatus.index(False))
+                    end = end.replace("%z", newDst)
                 else:
-                    item = [item, ""]
-                    
-                    if item[0] in hvars:
-                        item[-1] = hvars[hvars.index(item[0])].type[1:]
-                    elif item[0] in dhvars:
-                        item[-1] = dhvars[dhvars.index(item[0])].type[1:]
+                    end = end.replace("%z", dst)
+
+                end = end.replace("%0", dst)
+
+                if len(end.split("\t")) > 2:
+                    end = end[:end.rfind("\t")] + ext + "\t" + end[end.rfind("\t") + 1:]
+                else:
+                    end = end.replace("\t", ext + "\t")
+
+                end = end.replace("%tn0", str(components) if "." not in dst else str(len(dst[dst.index(".") + 1:])))
+
+                prepend = ""
+                for dex, item in enumerate(inner):
+                    if any([IndexOfSafe(item, char) != -1 for char in "+-*/"] + ["(" in item]):
+                            if not (item == "-" and inner[dex - 1] == "1"):
+                                that = CompileOperand(item, ext, AllocateRegister(reg), components)
+                                reg += 1
+                                prepend += that[1]
+                                inner[dex] = "\"" + that[0] + "\""
+                                item = "\"" + that[0] + "\""
+
+                    if item[0] in "0123456789":
+                        if item[:2] != "1-":
+                            item = "\"" + AddConstant("constant_" + str(constants), item, "f" if item[-1] == "f" else "i") + "\""
+
+                    if "." in item:
+                        item = item.split(".")
+                        item.append(len(item[1]))
                     else:
-                            item[-1] = "4"
+                        item = [item, ""]
+                        
+                        if item[0] in hvars:
+                            item[-1] = hvars[hvars.index(item[0])].type[1:]
+                        elif item[0] in dhvars:
+                            item[-1] = dhvars[dhvars.index(item[0])].type[1:]
+                        else:
+                                item[-1] = "4"
 
-                end = end.replace("%tn" + str(dex + 1), str(item[-1]))
+                    end = end.replace("%tn" + str(dex + 1), str(item[-1]))
 
-                end = end.replace("%" + str(dex + 1), HVarNameToRegister('.'.join(item[:-1]).strip()))
-            return [dst, prepend + end + "\n"]
+                    end = end.replace("%" + str(dex + 1), HVarNameToRegister('.'.join(item[:-1]).strip()))
+                return [dst, prepend + end + "\n"]
 
     string = string.replace("(", "").replace(")", "")
 
