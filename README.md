@@ -488,27 +488,29 @@ var2 = myList[var1.x];
 
 The supported intrinsic functions are as follows:
 - abs()
-- clamp()
+- clamp()*
 - degrees()
 - distance() / dst()
 - dot()
 - exp2() (exp2_full() to use the accurate but expensive version)
-- floor()
+- floor()*
 - frac()
-- length()
-- lerp()
+- length()*
+- lerp()*
 - lit()
 - log2() (log2_full() to use the accurate but expensive version)
 - mad()
 - max()
 - min()
-- normalize()
+- normalize()*
 - radians()
-- reflect()
+- reflect()*
 - rcp()
 - rsqrt()
-- sqrt()
+- sqrt()*
 - step()
+
+*These functions use workarounds that are multiple instructions long, so they aren't as efficient as the other ones
 
 For example:
 ```hlsl
