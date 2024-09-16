@@ -1,5 +1,5 @@
 # Zack's HLSL to FlatOut SHA
-version = "v2.21"
+version = "v2.22"
 # Am I particularly proud of this code? uhh
 
 try:
@@ -899,6 +899,8 @@ def CompileHLSL(script, hv=-1, dst="r0"):
                         if tokens[0] == "const":
                             tokens = tokens[1:]
                             bForceConst = True
+
+                        line = " ".join(tokens)
                         
                         if tokens[1] in hvars:
                             Error("Syntax error: re-definition of [" + tokens[1] + "]")
@@ -922,16 +924,17 @@ def CompileHLSL(script, hv=-1, dst="r0"):
                                     typeOfExpr = "Defining Function"
                                     tokens[1] = line[line.index(" ") + 1:line.index("(")]
 
-                                    hfuncs.append(HFunc((tokens[1][tokens[1].index("(") + 1:] if "(" in tokens[1] else tokens[1]), ""))
+                                    hfuncs.append(HFunc(tokens[1], ""))
                                     args = [item.strip().split(" ") for item in line[line.index("(") + 1:line.index(")")].split(",")]
-                                        
+                                    print("Args:", args)
+                                    
                                     scope = tokens[1]
                                     if args:
                                         hvars += [HVar(item[-1], "%" + str(i + 1), "", "f4" if len(item) == 1 else item[-2][0] + item[-2][-1]) for i, item in enumerate(args)]
-                                        temp = 0
-                                        mode = 2
-                                        buffer = ""
-                                        continue
+                                    temp = 0
+                                    mode = 2
+                                    buffer = ""
+                                    continue
 
                                 else:
                                     if "=" in line:
