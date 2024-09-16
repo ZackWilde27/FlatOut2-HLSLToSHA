@@ -512,7 +512,6 @@ def IndexOfSafe(string, item):
 # Returns a list where the first item is the destination that contains the result of the code, and the second item is the code.
 def CompileOperand_Partial(string, ext="", dst="", components=4):
     string = string.strip()
-    print("CompileOperandPartial:", string)
     sembly = ""
     ops = ["*mul", "+add", "-sub"]
     mathed = False
@@ -904,7 +903,6 @@ def CompileHLSL(script, hv=-1, dst="r0"):
                             Error("Syntax error: re-definition of [" + tokens[1] + "]")
                             break
 
-                        print("CompileHLSL:", line, IsConst(line))
                         if IsConst(line) or bForceConst:
                             typeOfExpr = "Defining Constant"
                             if "[" in tokens[1]:
