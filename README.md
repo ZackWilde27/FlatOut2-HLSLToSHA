@@ -565,6 +565,20 @@ float4 var1 = LocalToWorld(pos);
 float4 var2 = RotateToWorld(pos); // Only does the rotation portion of LocalToWorld()
 
 float4 var3 = LocalToScreen(pos);
+
+// Tip: I recently discovered you can invert the matrix by inverting both the input and result
+float4 WorldToLocal(a, b) {
+	a.x = rcp(a.x);
+	a.y = rcp(a.y);
+	a.z = rcp(a.z);
+	// the w is usually 1 so there's no need to invert
+	// The destination and source can't be the same in a matrix instruction, so it needs a b value
+	b = LocalToWorld(a);
+	a.x = rcp(b.x);
+	a.y = rcp(b.y);
+	a.z = rcp(b.z);
+	a.w = rcp(b.w);
+}
 ```
 
 <br>
