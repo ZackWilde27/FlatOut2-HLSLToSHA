@@ -455,31 +455,31 @@ bool2 const4 = bool2(true, false); // I don't know what bools are used for
 
 
 ### Arrays
-The main way it differs from HLSL is that arrays are defined with ```[]``` instead of ```{}```, like Python or JavaScript
+Arrays can be defined with either ```{}``` or ```[]```
 ```hlsl
 float3 list1[1] = [ float3(1.0f, 1.0f, 1.0f) ];
 
-float2 myList[] = [
+float2 myList[] = {
   float2(1.0f, 0.0f),
   float2(0.0f, 1.0f),
   float2(1.0f, 0.0f)
-];
+};
 ```
 
 They can have items of varying type but they can't be packed together
 ```hlsl
 float4 myList[] =
-[
+{
   float2(1.0f, 0.0f),
   float3(0.5f, 0.25f, 0.125f),
   0.75f
-];
+};
 ```
 
-Then the array can be indexed as normal, though the index can't have math in it
+Then the array can be indexed however
 ```hlsl
 // floats will be rounded to the nearest integer to get the index
-var2 = myList[var1.x];
+var2 = myList[var1.x * 2.0f] + var1.y;
 ```
 
 <br>
@@ -567,13 +567,13 @@ float4 var2 = RotateToWorld(pos); // Only does the rotation portion of LocalToWo
 float4 var3 = LocalToScreen(pos);
 
 // Tip: I recently discovered you can invert the matrix by inverting both the input and result
-float4 WorldToLocal(a, b) {
+// This trick only works with rotation, it'll still be moved by the original amount
+float4 RotateToLocal(a, b) {
 	a.x = rcp(a.x);
 	a.y = rcp(a.y);
 	a.z = rcp(a.z);
-	// the w is usually 1 so there's no need to invert
 	// The destination and source can't be the same in a matrix instruction, so it needs a b value
-	b = LocalToWorld(a);
+	b = RotateToWorld(a);
 	a.x = rcp(b.x);
 	a.y = rcp(b.y);
 	a.z = rcp(b.z);
@@ -639,18 +639,12 @@ float4 VertexShader(float3 pos : POSITION, float3 nrm : NORMAL, float4 diff : CO
   f.y = f.x * f.x * f.x;
   FRESNEL = mad(f.y, 0.5f, 0.5f);
 
-  // I'm still figuring out the input ambient constants and how those should work, for now I'd use a function with assembly
-  float3 GetAmbient(float3 normal)
-  {
-    asm
-    {
-      dp4   r4.x, %1, c17
-      dp4   r4.y, %1, c18
-      dp4   r4.z, %1, c19
-      mov   %0, r4
-    }
-  }
-  AMBIENT = GetAmbient(worldNormal);
+  float3 inAmbient;
+  inAmbient.x = sqrt(dot(worldNormal, "c17"));
+  inAmbient.y = sqrt(dot(worldNormal, "c18"));
+  inAmbient.z = sqrt(dot(worldNormal, "c19"));
+
+  AMBIENT = inAmbient;
 
   return LocalToScreen(pos);
 }
@@ -661,7 +655,7 @@ float4 PixelShader(float4 colour, float4 specular, float4 dirt, float4 lighting)
     float4 c = specular * FRESNEL;
     c = saturate(c + lerp(colour, dirt, BLEND));
     float4 l = lighting.a * SHADOW;
-    l = saturate(mad(AMBIENT, 0.75f, l));
+    l = saturate(mad(AMBIENT, 0.6f, l));
     return c * l;
 }
 ```
