@@ -1,5 +1,5 @@
 # Zack's HLSL to FlatOut SHA
-version = "v2.22"
+version = "v2.3"
 # Am I particularly proud of this code? uhh
 
 try:
@@ -9,6 +9,7 @@ except:
 
 import time
 import os
+import re
 
 filename = ""
 author = ""
@@ -95,7 +96,7 @@ def PSTexToVSTex():
 
 def ResetAVars(isPS=isPixelShader):
     global hfuncs
-    hfuncs = [HFunc("dot", "dp3\t%0, %1, %2"), HFunc("lerp", "lrp\t%0, %3, %2, %1"), HFunc("mad", "mad\t%0, %1, %2, %3")] if isPS else [HFunc("dot", "dp%tn1\t%0, %1, %2"), HFunc("dot3", "dp3\t%0, %1, %2"), HFunc("dot4", "dp4\t%0, %1, %2"), HFunc("mad", "mad\t%0, %1, %2, %3"), HFunc("exp2", "expp\t%0, %1"), HFunc("exp2_full", "exp\t%0, %1"), HFunc("frac", "frc\t%0, %1"), HFunc("max", "max\t%0, %1, %2"), HFunc("min", "min\t%0, %1, %2"), HFunc("log2", "logp\t%0, %1"), HFunc("log2_full", "log\t%0, %1"), HFunc("rcp", "rcp\t%0,%1"), HFunc("rsqrt", "rsq\t%0, %1"), HFunc("distance", "dst\t%0, %1"), HFunc("dst", "dst\t%0, %1"), HFunc("abs", "max\t%0, %1, -%1"), HFunc("degrees", "rcp\t%z.x, c95.x\nmul\t%0, %z.x, %1"), HFunc("step", "sge\t%0, %1, %2"), HFunc("floor", "frc\t%z.w, %1\nsub\t%0, %1, %z.w"), HFunc("radians", "mul\t%0, c95.x, %1"), HFunc("lit", "mov\t%z.x, %1\nmov\t%z.y, %2\nmov\t%z.w, %3\nlit\t%0, %z"), HFunc("fresnel", "dp3\t%z.x, %1, %2\nmax\t%z.x, -%z.x, %z.x\nsub\t%z.x, c95.y, %z.x\nmul\t%z.x, %z.x, %z.x\nmul\t%z.x, %z.x, %z.x\nmul\t%0, %z.x, %z.x\n"), HFunc("reflect", "dp3\t%z.x, %1, %2\nadd\t%z.x, %z.x, %z.x\nmul\t%z, %z.x, %2\nsub\t%0, %1, %z"), HFunc("normalize", "dp3\t%z.a, %1, %1\nrsq\t%z.a, %z.a\nmul\t%0, %1, %z.a"), HFunc("lerp", "sub\t%z, %2, %1\nmad\t%0, %z, %3, %1"), HFunc("length", "dp3\t%z.a, %1, %1\nrsq\t%z.a, %z.a\nrcp\t%0, %z.a"), HFunc("clamp", "min\t%z, %1, %3\nmax\t%0, %z, %2"), HFunc("sqrt", "rsq\t%z, %1\nrcp\t%0, %z"), HFunc("RotateToWorld", "m3x%tn0\t%0, %1, c4"), HFunc("LocalToWorld", "m4x%tn0\t%0, %1, c4"), HFunc("WorldToView", "m4x%tn0\t%0, %1, c0"), HFunc("WorldToScreen", "m4x%tn0\t%0, %1, c0"), HFunc("LocalToScreen", "m4x%tn0\t%0, %1, c0")]
+    hfuncs = [HFunc("dot", "dp3\t%0, %1, %2"), HFunc("lerp", "lrp\t%0, %3, %2, %1"), HFunc("mad", "mad\t%0, %1, %2, %3")] if isPS else [HFunc("dot", "dp%tn1\t%0, %1, %2"), HFunc("dot3", "dp3\t%0, %1, %2"), HFunc("dot4", "dp4\t%0, %1, %2"), HFunc("mad", "mad\t%0, %1, %2, %3"), HFunc("exp2", "expp\t%0, %1"), HFunc("exp2_full", "exp\t%0, %1"), HFunc("frac", "frc\t%0, %1"), HFunc("max", "max\t%0, %1, %2"), HFunc("min", "min\t%0, %1, %2"), HFunc("log2", "logp\t%0, %1"), HFunc("log2_full", "log\t%0, %1"), HFunc("rcp", "rcp\t%0, %1"), HFunc("rsqrt", "rsq\t%0, %1"), HFunc("distance", "dst\t%0, %1"), HFunc("dst", "dst\t%0, %1"), HFunc("abs", "max\t%0, %1, -%1"), HFunc("degrees", "rcp\t%z.x, c95.x\nmul\t%0, %z.x, %1"), HFunc("step", "sge\t%0, %1, %2"), HFunc("floor", "frc\t%z.w, %1\nsub\t%0, %1, %z.w"), HFunc("radians", "mul\t%0, c95.x, %1"), HFunc("lit", "mov\t%z.x, %1\nmov\t%z.y, %2\nmov\t%z.w, %3\nlit\t%0, %z"), HFunc("fresnel", "dp3\t%z.x, %1, %2\nmax\t%z.x, -%z.x, %z.x\nsub\t%z.x, c95.y, %z.x\nmul\t%z.x, %z.x, %z.x\nmul\t%z.x, %z.x, %z.x\nmul\t%0, %z.x, %z.x\n"), HFunc("reflect", "dp3\t%z.x, %1, %2\nadd\t%z.x, %z.x, %z.x\nmul\t%z, %z.x, %2\nsub\t%0, %1, %z"), HFunc("normalize", "dp3\t%z.a, %1, %1\nrsq\t%z.a, %z.a\nmul\t%0, %1, %z.a"), HFunc("lerp", "sub\t%z, %2, %1\nmad\t%0, %z, %3, %1"), HFunc("length", "dp3\t%z.a, %1, %1\nrsq\t%z.a, %z.a\nrcp\t%0, %z.a"), HFunc("clamp", "min\t%z, %1, %3\nmax\t%0, %z, %2"), HFunc("sqrt", "rsq\t%z, %1\nrcp\t%0, %z"), HFunc("RotateToWorld", "m3x%tn0\t%0, %1, c4"), HFunc("LocalToWorld", "m4x%tn0\t%0, %1, c4"), HFunc("WorldToView", "m4x%tn0\t%0, %1, c0"), HFunc("WorldToScreen", "m4x%tn0\t%0, %1, c0"), HFunc("LocalToScreen", "m4x%tn0\t%0, %1, c0"), HFunc("mul", "m%tn2x%tn0\t%0, %1, %2")]
 
 def TokenType(char, lastChar):
     if char in "01234567890.":
@@ -122,7 +123,7 @@ def HVarRegisterToVar(register):
 def OperatorPriority(char):
     return "/*+-".find(char)
 
-def AddConstant(name, value, valtype="f", pack=True):
+def AddConstant(name, value, valtype="f", pack=True, swizzle=True):
     global constants
     if constants >= maxC:
         Error("Too many constants defined, there can only be " + str(maxC - startC) + ", since the game reserves " + str(startC) + " of them")
@@ -136,6 +137,7 @@ def AddConstant(name, value, valtype="f", pack=True):
     allDimensions = 0
     numConsts = 0
 
+    # Checking for pre-existing constant
     valstring = ", ".join(vals)
     for hv in hvars + dhvars:
         if hv.type:
@@ -145,7 +147,7 @@ def AddConstant(name, value, valtype="f", pack=True):
                     
                         
                     newRegister = ""
-                    if "." in hv.register:
+                    if "." in hv.register or not swizzle:
                         newRegister = hv.register
                     else:
                         newRegister = hv.register + "." + "xyzw"[offset:offset + dimensions]
@@ -160,6 +162,9 @@ def AddConstant(name, value, valtype="f", pack=True):
         vals.append("%x")
 
     newHVar = HVar(name, "", "", valtype + str(dimensions))
+
+    suffix = ""
+    chart = "xyzw"
     
     if dimensions < 4 and pack:
         for c in range(startC, constants):
@@ -172,7 +177,7 @@ def AddConstant(name, value, valtype="f", pack=True):
                     if hv.type[0] == valtype:
                         if hv.register == "c" + str(c):
                             numConsts += 1
-                            firstConst = hv
+                            if not firstConst:  firstConst = hv
                             allDimensions += len(hv.value.split("%x")) - 1
                             break
 
@@ -194,20 +199,22 @@ def AddConstant(name, value, valtype="f", pack=True):
                         firstConst.value = firstConst.value.replace("%x", vals[i], 1)
 
                     hvars.append(newHVar)
-                    chart = "xyzw"
+                    
                     return newHVar.register + (OffsetProperty("." + chart[:dimensions], newHVar.offset) if ("." not in newHVar.register) else "")
 
-
+    if swizzle:
+        suffix = OffsetProperty("." + chart[:dimensions], newHVar.offset)
     newHVar.register = "c" + str(constants)
     constants += 1
     if isPixelShader and dimensions == 1:
         vals = vals[1:] + [vals[0]]
         newHVar.register += ".a"
+        suffix = ""
 
     newHVar.value = Translate("fib", ["float", "int", "bool"], valtype)
     newHVar.value += "4(" + ", ".join(vals) + ")"
     hvars.append(newHVar)
-    return newHVar.register
+    return newHVar.register + suffix
 
 def IsType(string):
     if string:
@@ -230,7 +237,7 @@ def IsConst(line):
 
         if arg:
             if arg[0] in "01234567890." or arg in ["true", "false"]:
-                if arg[:2] != "1-":
+                if arg[:2] not in ["1-", "1/"]:
                     return True
 
             for i in range(2, 5):
@@ -241,6 +248,7 @@ def IsConst(line):
 
 def BreakdownMath(line):
     tokes = [""]
+    symbols = "+-*" if isPixelShader else "+-*/"
     mode = 0
     bString = False
     for char in line:
@@ -267,31 +275,34 @@ def BreakdownMath(line):
         tokes[-1] += char
 
     tokes = [item.strip() for item in tokes]
+    
+    if isPixelShader:
+        i = 0
+        while True:
+            try:
+                i = tokes.index("*", i)
+            except ValueError:
+                break
 
-    i = 0
-    while True:
-        try:
-            i = tokes.index("*", i)
-        except ValueError:
-            break
+            if tokes[i + 1] in ["2", "4"]:
+                tokes[i - 1] = tokes[i - 1] + tokes[i] + tokes[i + 1]
+                tokes = tokes[:i] + tokes[i + 2:]
 
-        if tokes[i + 1] in ["2", "4"]:
-            tokes[i - 1] = tokes[i - 1] + tokes[i] + tokes[i + 1]
-            tokes = tokes[:i] + tokes[i + 2:]
-
-        i += 1
+            i += 1
 
     i = 0
     while i < len(tokes):
         token = tokes[i]
-        if token == "1":
-            if i < (len(tokes) - 1):
-                if tokes[i + 1] == "-":
-                    tokes[i] = "\"1-" + HVarNameToRegister(tokes[i + 2]) + "\""
-                    tokes = tokes[:i + 1] + tokes[i + 3:]
-                    continue
+
+        if isPixelShader:
+            if token == "1":
+                if i < (len(tokes) - 1):
+                    if tokes[i + 1] == "-":
+                        tokes[i] = "\"1-" + HVarNameToRegister(tokes[i + 2]) + "\""
+                        tokes = tokes[:i + 1] + tokes[i + 3:]
+                        continue
         if IsConst(token):
-            tokes[i] = "\"" + AddConstant("constant_" + str(constants), token) + "\""
+            tokes[i] = "\"" + AddConstant("constant_" + str(constants), token, swizzle=True) + "\""
         i += 1
         
     return tokes
@@ -315,13 +326,23 @@ def OffsetProperty(prop, offset):
                 output += chart[chart.index(char) + offset]
     return output
 
-def HVarNameToRegister(name):
+def HandleString(string):
+    if string[0] == string[-1]:
+        return string[1:-1]
+    prefix = string[1:].split("\"")
+    ext = prefix[1]
+    prefix = prefix[0]
+    if "." in prefix:
+        return prefix[:prefix.index(".")] + ext
+    return prefix + ext
+
+def HVarNameToRegister(name, swizzle=True):
     allhvars = dhvars + hvars
     ext = ""
     prefix = ""
     if name:
-        if name[0] == name[-1] and name[0] == "\"":
-            return name[1:-1]
+        if name[0] == "\"":
+            return HandleString(name)
         
         if "." in name:
             ext = "." + HandleProperty(name.split(".")[1].strip())
@@ -333,7 +354,7 @@ def HVarNameToRegister(name):
 
         if name in allhvars:
             hv = Translate(allhvars, allhvars, name)
-            if (hv.offset or int(hv.type[1:]) != 4) and (not ext) and ("." not in hv.register) and (hv.register[0] != "v") and (not isPixelShader):
+            if (hv.offset or int(hv.type[1:]) != 4) and (not ext) and ("." not in hv.register) and (hv.register[0] != "v") and (not isPixelShader) and swizzle:
                 ext = "." + "xyzw"[hv.offset:hv.offset + int(hv.type[1:])]
 
             return prefix + hv.register + OffsetProperty(ext, hv.offset)
@@ -444,6 +465,7 @@ def ResetModifs(isPS=isPixelShader):
 
 def CompileOperand(string, ext="", dst="", components=4):
     CompilePartial = CompileOperand_Partial
+    # Technically the name of this variable isn't right, but I didn't want to type out usedunusedRegisters every time
     unusedRegisters = 0
     if dst == "":
         dst = AllocateRegister(0)
@@ -462,11 +484,11 @@ def CompileOperand(string, ext="", dst="", components=4):
                 
             if "[" in tokens[i]:
                 index = tokens[i][tokens[i].index("[") + 1:tokens[i].index("]")].strip()
-                if any([char in index for char in "*+-/("]):
-                    that = CompilePartial(index, "", AllocateRegister(unusedRegisters), 1)
+                if any([(char in index) for char in "*+-/("]):
+                    that = CompileOperand(index, "", AllocateRegister(unusedRegisters) + ".x", 1)
                     unusedRegisters += 1
                     fullsembly += that[1]
-                    fullsembly += "mov" + ext + "\ta0.x, \"" + that[0] + "\"\n" 
+                    fullsembly += "mov" + ext + "\ta0.x, " + that[0] + "\n" 
                 else:
                     fullsembly += CompilePartial(index, "", "a0.x", 1)[1]
                 tokens[i] = "\"c[a0.x + " + HVarNameToRegister(tokens[i][:tokens[i].index("[")].strip())[1:] + "]\""
@@ -477,7 +499,14 @@ def CompileOperand(string, ext="", dst="", components=4):
         fullsembly += that[1]
     if tokens:
         if "[" in tokens[0]:
-            fullsembly += CompilePartial(tokens[0][tokens[0].index("[") + 1:tokens[0].index("]")].strip(), "", "a0.x", 1)[1]
+            index = tokens[0][tokens[0].index("[") + 1:tokens[0].index("]")].strip()
+            if any([(char in index) for char in "*+-/("]):
+                that = CompileOperand(index, "", AllocateRegister(unusedRegisters) + ".x", 1)
+                unusedRegisters += 1
+                fullsembly += that[1]
+                fullsembly += "mov" + ext + "\ta0.x, " + that[0] + "\n" 
+            else:
+                fullsembly += CompilePartial(index, "", "a0.x", 1)[1]
             tokens[0] = "\"c[a0.x + " + HVarNameToRegister(tokens[0][:tokens[0].index("[")].strip())[1:] + "]\""
         fullsembly += CompilePartial(tokens[0], ext, dst, components)[1]
     return [dst, fullsembly]
@@ -529,7 +558,7 @@ def CompileOperand_Partial(string, ext="", dst="", components=4):
 
     if "(" in string:
         for av in hfuncs:
-            if string[:string.index("(")] == av.name:
+            if string[:string.index("(")].strip() == av.name:
                 dex = string.index(av.name + "(") + len(av.name) + 1
                 end = GetParEnd(string, dex)
                 inner = [item.strip() for item in ArraySplit(string[dex:end])]
@@ -576,11 +605,27 @@ def CompileOperand_Partial(string, ext="", dst="", components=4):
                         elif item[0] in dhvars:
                             item[-1] = dhvars[dhvars.index(item[0])].type[1:]
                         else:
+                            if not isPixelShader:
+                                item[-1] = "m4" if (item[0] == "c0") else "m3" if (item[0] == "c4") else "4"
+                            else:
                                 item[-1] = "4"
 
                     end = end.replace("%tn" + str(dex + 1), str(item[-1]))
 
-                    end = end.replace("%" + str(dex + 1), HVarNameToRegister('.'.join(item[:-1]).strip()))
+                    name = '.'.join(item[:-1]).strip()
+                    hv = HVarNameToVar(name)
+                    # My understanding of regexes is limited, 
+                    if hv:
+                        matches = re.findall("%" + str(dex + 1) + "\\.[xyzwrgba]+", end)
+                        for m in matches:
+                            end = end.replace(m, hv.register + OffsetProperty(m[m.index("."):], hv.offset))
+                        register = hv.register
+                        
+                    else:
+                        register = HVarNameToRegister(name)
+                        if "." in register:
+                            end = end.replace("%" + str(dex + 1) + ".", register[:register.index(".") + 1])
+                    end = end.replace("%" + str(dex + 1), register)
                 return [dst, prepend + end + "\n"]
 
     string = string.replace("(", "").replace(")", "")
@@ -606,12 +651,12 @@ def CompileOperand_Partial(string, ext="", dst="", components=4):
 
 def CompileOperand_PartialPS(string, ext="", dst="", components=4):
     mathed = False
-    while (m := GetFirstModif(string)):
-        if (m[0] + "(") in string:
-            dex = string.index(m[0] + "(") + len(m[0]) + 1
-            end = GetParEnd(string, dex)
-            inner = string[dex:end]
-            return CompileOperand(inner, "_" + m[1] + ext, dst)
+    m = GetFirstModif(string)
+    if m:
+        dex = string.index(m[0] + "(") + len(m[0]) + 1
+        end = GetParEnd(string, dex)
+        inner = string[dex:end]
+        return CompileOperand(inner, "_" + m[1] + ext, dst)
 
     if "?" in string:
         dex = string.index("?") + 1
@@ -640,6 +685,8 @@ def CompileOperand_PartialPS(string, ext="", dst="", components=4):
 
 def CompileOperand_PartialVS(string, ext="", dst="", components=4):
     if "/" in string:
+        if string.split("/")[0].strip() == "1":
+            return [dst, "rcp\t" + dst + ", " + HVarNameToRegister(string.split("/")[1].strip()) + "\n"]
         return [dst, "rcp\t" + dst + ", " + HVarNameToRegister(string.split("/")[1].strip()) + "\nmul\t" + dst + ", " + dst + ", " + HVarNameToRegister(string.split("/")[0].strip()) + "\n"]
 
     if "?" in string:
@@ -721,6 +768,10 @@ def SecondPass(script):
     while (mdex := script.find("mov\t", dex)) != -1:
             sdex = RFind(script, "\n", mdex - 2)
             tdex = script.find("\t", sdex)
+            if script[mdex + 4:mdex + 8] == "a0.x":
+                dex = mdex + 1
+                continue
+
             if tdex != -1:
                 muls = script[tdex + 1:script.index("\n", tdex)].split(",")
                 dst = ((script[script.index(",", mdex) + 1:script.index("\n", mdex + 1)].strip()) if script.find("\n", mdex + 1) != -1 else script[script.index(",", mdex) + 1:].strip())
@@ -865,12 +916,10 @@ def CompileHLSL(script, hv=-1, dst="r0"):
                 if (char == ' ' and char == buffer[-1]):
                     continue
 
-            
-
             if char in '\t\n':
                 continue
 
-            if char == ';' or char == "{":
+            if char == ';' or (char == "{" and "[" not in buffer):
                 line = buffer
                 buffer = ""
 
@@ -926,7 +975,6 @@ def CompileHLSL(script, hv=-1, dst="r0"):
 
                                     hfuncs.append(HFunc(tokens[1], ""))
                                     args = [item.strip().split(" ") for item in line[line.index("(") + 1:line.index(")")].split(",")]
-                                    print("Args:", args)
                                     
                                     scope = tokens[1]
                                     if args:
@@ -963,10 +1011,10 @@ def CompileHLSL(script, hv=-1, dst="r0"):
                         tokens = line.split("=")[0].split(" ") + ["="] + line.split("=")[1].split(" ")
                         typeOfExpr = "Assign"
                         tokens[0] = tokens[0].strip()
-                        if tokens[0][0] == tokens[0][-1] and tokens[0][0] == "\"":
+                        if tokens[0][0] == "\"":
                             if bMeanwhile:
                                 output += "+"
-                            output += CompileOperand(line[line.index("=") + 1:], "", tokens[0][1:-1], int(GetRegisterType(tokens[0][1:-1])[1:]))[1]
+                            output += CompileOperand(line[line.index("=") + 1:], "", HandleString(tokens[0]), int(GetRegisterType(tokens[0][1:-1])[1:]))[1]
                         else:
                             name = tokens[0]
                             extension = ""
@@ -976,7 +1024,7 @@ def CompileHLSL(script, hv=-1, dst="r0"):
                             if name in hvars + dhvars:
                                 hv = HVarNameToVar(name)
                                 if hv:
-                                    output += ("+" if bMeanwhile else "") + CompileOperand(line[line.index("=") + 1:], "", hv.register + OffsetProperty(HandleProperty(extension), hv.offset), int(hv.type[1:]))[1]
+                                    output += ("+" if bMeanwhile else "") + CompileOperand(line[line.index("=") + 1:], "", HandleString("\"" + hv.register + "\"" + OffsetProperty(HandleProperty(extension), hv.offset)), int(hv.type[1:]))[1]
                                 else:
                                     Error("Syntax Error: Unknown token: " + Surround(name))
                             else:
@@ -1108,7 +1156,7 @@ try:
             
 except:
     with open("settings.txt", "w") as settingsFile:
-        settings = "\'\'\'\n Comment these out to change them. \nThis is a python script so theoretically any variable from the script can be changed from here\n\'\'\'\n#filename = \"\"\n#author = \"\"\n#loop = True\n#noOptimizations = False\n#is24Hour = False\n#includeComments = True"
+        settings = "\'\'\'\n Un-comment these to change them. \nThis is a python script so theoretically any variable from the script can be changed from here\n\'\'\'\n#filename = \"\"\n#author = \"\"\n#loop = True\n#noOptimizations = False\n#is24Hour = False\n#includeComments = True"
         settingsFile.write(settings)
 
 # The settings file is now just a python file, so technically this modding tool has mod support
