@@ -17,6 +17,8 @@ Table of Contents
 
 - [Defining the VertexShader](https://github.com/ZackWilde27/FlatOut2-HLSLToSHA/blob/main/README.md#defining-the-vertex-shader)
 
+- [Defining the Technique](https://github.com/ZackWilde27/FlatOut2-HLSLToSHA?tab=readme-ov-file#defining-the-technique)
+
 - [Writing the PixelShader](https://github.com/ZackWilde27/FlatOut2-HLSLToSHA/blob/main/README.md#writing-the-pixel-shader)
 	- [Variables](https://github.com/ZackWilde27/FlatOut2-HLSLToSHA/tree/main?tab=readme-ov-file#variables)
 	- [Intrinsic Functions](https://github.com/ZackWilde27/FlatOut2-HLSLToSHA/tree/main?tab=readme-ov-file#intrinsic-functions)
@@ -131,7 +133,7 @@ float4 VertexShader()
 }
 ```
 
-These inputs require type and semantics, as it's up to you which inputs are given to the shader.
+These inputs require semantics, as it's up to you which inputs are given to the shader.
 
 The syntax for the inputs is ```type``` ```name``` : ```semantic```
 
@@ -185,7 +187,7 @@ Technique T0
 
 ### Variables
 
-FlatOut 2 uses HLSL assembly 1.1 - 1.3, and those ones are extremely basic so the HLSL has some quirks.
+FlatOut 2 uses Shader Model 1, which is extremely basic so the HLSL has some quirks.
 
 You can only have 2 variables, because there's 2 registers to hold values
 ```hlsl
@@ -320,8 +322,7 @@ float4 PixelShader(colour, specular)
 <br>
 
 ### Functions
-In the pixel shader, there's no way to call functions, so these are defines that can have multiple lines, as-in they will copy+paste the code inside.
-All functions have to return a value, because it has to be structured just like the instrinsic functions
+In this shader model, there's no way to call functions, so these are defines that can have multiple lines, meaning they will copy+paste the code inside.
 ```hlsl
 float4 psMainD3D9(float4 colour, float4 specular, float4 blend)
 {
@@ -466,7 +467,7 @@ float2 myList[] = {
 };
 ```
 
-They can have items of varying type but they can't be packed together
+They can have items of varying type but they won't be packed together
 ```hlsl
 float4 myList[] =
 {
@@ -489,7 +490,7 @@ var2 = myList[var1.x * 2.0f] + var1.y;
 The supported intrinsic functions are as follows:
 - abs()
 - clamp()*
-- degrees()
+- degrees()*
 - distance() / dst()
 - dot()
 - exp2() (exp2_full() to use the accurate but expensive version)
@@ -565,20 +566,6 @@ float4 var1 = LocalToWorld(pos);
 float4 var2 = RotateToWorld(pos); // Only does the rotation portion of LocalToWorld()
 
 float4 var3 = LocalToScreen(pos);
-
-// Tip: I recently discovered you can invert the matrix by inverting both the input and result
-// This trick only works with rotation, it'll still be moved by the original amount
-float4 RotateToLocal(a, b) {
-	a.x = rcp(a.x);
-	a.y = rcp(a.y);
-	a.z = rcp(a.z);
-	// The destination and source can't be the same in a matrix instruction, so it needs a b value
-	b = RotateToWorld(a);
-	a.x = rcp(b.x);
-	a.y = rcp(b.y);
-	a.z = rcp(b.z);
-	a.w = rcp(b.w);
-}
 ```
 
 <br>
@@ -662,14 +649,13 @@ float4 PixelShader(float4 colour, float4 specular, float4 dirt, float4 lighting)
 
 <br><br>
 
-Bonus tip: The return value is always float4 so it's optional.
+Bonus tip: The return value and parameter types can all be assumed so they are optional
 ```hlsl
-VertexShader(float3 pos : POSITION)
+VertexShader(pos : POSITION)
 {
     //...
 }
 
-// For the pixel shader, the parameters don't need the type either since it's always float4
 PixelShader(colour, specular, dirt, lighting)
 {
 
