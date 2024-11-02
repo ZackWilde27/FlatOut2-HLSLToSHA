@@ -567,6 +567,7 @@ float4 var2 = RotateToWorld(pos); // Only does the rotation portion of LocalToWo
 
 float4 var3 = LocalToScreen(pos);
 ```
+[I made a page to explain these](https://github.com/ZackWilde27/FlatOut2-HLSLToSHA/wiki/Local-vs-World-vs-View-vs-Screen-Space)
 
 <br>
 
