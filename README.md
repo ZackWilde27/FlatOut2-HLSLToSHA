@@ -21,11 +21,12 @@ Table of Contents
 
 - [Writing the PixelShader](https://github.com/ZackWilde27/FlatOut2-HLSLToSHA/blob/main/README.md#writing-the-pixel-shader)
 	- [Variables](https://github.com/ZackWilde27/FlatOut2-HLSLToSHA/tree/main?tab=readme-ov-file#variables)
+  	- [Keywords](https://github.com/ZackWilde27/FlatOut2-HLSLToSHA/tree/main?tab=readme-ov-file#keywords)
 	- [Intrinsic Functions](https://github.com/ZackWilde27/FlatOut2-HLSLToSHA/tree/main?tab=readme-ov-file#intrinsic-functions)
 	- [Math](https://github.com/ZackWilde27/FlatOut2-HLSLToSHA/tree/main?tab=readme-ov-file#math)
 	- [Modifiers](https://github.com/ZackWilde27/FlatOut2-HLSLToSHA/tree/main?tab=readme-ov-file#modifiers)
 	- [If statements](https://github.com/ZackWilde27/FlatOut2-HLSLToSHA/tree/main?tab=readme-ov-file#if-statements)
-	- [Defines](https://github.com/ZackWilde27/FlatOut2-HLSLToSHA/tree/main?tab=readme-ov-file#defines)
+	- [Macros](https://github.com/ZackWilde27/FlatOut2-HLSLToSHA/tree/main?tab=readme-ov-file#macros)
 	- [Functions](https://github.com/ZackWilde27/FlatOut2-HLSLToSHA/tree/main?tab=readme-ov-file#functions)
 	- [Meanwhile](https://github.com/ZackWilde27/FlatOut2-HLSLToSHA/tree/main?tab=readme-ov-file#meanwhile)
 	- [Splitting Vectors](https://github.com/ZackWilde27/FlatOut2-HLSLToSHA/tree/main?tab=readme-ov-file#splitting-vectors)
@@ -33,9 +34,9 @@ Table of Contents
 	- [Strings](https://github.com/ZackWilde27/FlatOut2-HLSLToSHA/tree/main?tab=readme-ov-file#strings)
 
 - [Writing the VertexShader](https://github.com/ZackWilde27/FlatOut2-HLSLToSHA/blob/main/README.md#writing-the-vertex-shader)
-	- [Returning](https://github.com/ZackWilde27/FlatOut2-HLSLToSHA/tree/main?tab=readme-ov-file#returning)
 	- [Variables](https://github.com/ZackWilde27/FlatOut2-HLSLToSHA/tree/main?tab=readme-ov-file#variables-1)
 	- [Arrays](https://github.com/ZackWilde27/FlatOut2-HLSLToSHA/tree/main?tab=readme-ov-file#arrays)
+  	- [Keywords](https://github.com/ZackWilde27/FlatOut2-HLSLToSHA/tree/main?tab=readme-ov-file#keywords-1)
 	- [Intrinsic Functions](https://github.com/ZackWilde27/FlatOut2-HLSLToSHA/tree/main?tab=readme-ov-file#intrinsic-functions-1)
 	- [Textures](https://github.com/ZackWilde27/FlatOut2-HLSLToSHA/tree/main?tab=readme-ov-file#textures)
 	- [Colour Registers](https://github.com/ZackWilde27/FlatOut2-HLSLToSHA/tree/main?tab=readme-ov-file#colour-registers)
@@ -64,16 +65,13 @@ The script will create a ```settings.txt``` file when launching for the first ti
 ```
 filename = ""
 author = ""
-# For loop, "" means to ask, otherwise it's bool(x)
-loop = ""
+loop = "" # empty string means to ask, otherwise it's bool(loop)
 ```
 Leaving them as "" means that it will ask you when the script runs, so you can set it up to ask you every question or none at all.
 
 It's actually a python script so theoretically any variable from the script can be changed in there.
 
 <br><br>
-
-# HLSL
 
 ## Defining the Pixel Shader
 The pixel shader function can be called PixelShader, psMainD3D9, or just psMain
@@ -82,7 +80,7 @@ It returns the final colour of the pixel
 ```hlsl
 float4 PixelShader()
 {
-  // All code in here will end up in the pixel shader of the SHA file
+  // Code in here will run for every pixel drawn
 }
 ```
 
@@ -103,7 +101,7 @@ tex		t1	; Reflection + specular alpha
 tex		t2	; Dirt
 tex		t3	; N * L
 ```
-*Note, the (N * L) is dot product, not multiply, so it basically means directional lighting*
+*Note: the (N * L) is dot product, not multiply, so it basically means directional lighting*
 
 So my re-implementation would look something like this:
 
@@ -114,13 +112,17 @@ float4 PixelShader(float4 colour, float4 specular, float4 dirt, float4 lighting)
 }
 ```
 
-If it uses an instruction other than ```tex``` to sample the texture, it can be specified instead of the type, such as ```texkill```:
+If it uses an instruction other than ```tex``` to sample the texture, it can be specified instead of the type:
 ```hlsl
-// texkill means that if any of its uv coordinates are less than 0, don't render this pixel
-float4 PixelShader(float4 colour, texkill specular) {}
+float4 PixelShader(texcoord colour, texkill specular) {}
+
+// texcoord means that instead of sampling the texture, the parameter will contain the UVs
+// texkill means that if any of its UV coordinates are less than 0, don't render this pixel
 ```
 
+
 <br>
+
 
 ## Defining the Vertex Shader
 The vertex shader can be called VertexShader, vsMainD3D9, vsMain, or just main
@@ -129,19 +131,11 @@ It returns the position of the vertex in screen space
 ```hlsl
 float4 VertexShader()
 {
-  // All code in here will end up in the vertex shader of the SHA file
+  // Code in here will run for each vertex in the mesh
 }
 ```
 
 These inputs require semantics, as it's up to you which inputs are given to the shader.
-
-The syntax for the inputs is ```type``` ```name``` : ```semantic```
-
-The semantics are:
-- POSITION, VPOS, or SV_Position (float3)
-- NORMAL (float3)
-- COLOR or SV_Target (float4)
-- TEXCOORD (float2) (this one can have an index at the end like TEXCOORD0 or TEXCOORD1)
 
 For example:
 ```hlsl
@@ -157,8 +151,11 @@ float4 VertexShader(float3 pos : POSITION, float2 uv1 : TEXCOORD0, float2 uv2 : 
 
 }
 ```
+[Full list of semantics](https://github.com/ZackWilde27/FlatOut2-HLSLToSHA/wiki/Vertex-Shader-Semantics)
+
 
 <br>
+
 
 ## Defining the Technique
 You have the choice to add a Technique/Pass to your shader if the original shader needs more setup than just the shaders and textures
@@ -178,6 +175,7 @@ Technique T0
   }
 }
 ```
+
 
 <br>
 <br>
@@ -206,7 +204,19 @@ float4 const3 = float4(1.0f, 1.0f, 0.0f, 0.0f);
 //...
 ```
 
+
 <br>
+
+### Keywords
+Reserved constants and other registers can be accessed with keywords
+- SHADOW : The shadow mask of the track
+- AMBIENT : Ambient lighting
+- FRESNEL : Fresnel term
+- BLEND : The car body shaders use vertex colours to blend between clean and dirt
+- EXTRA : From what I can tell it's either unused or a duplicate of something else
+
+<br>
+
 
 ### Intrinsic Functions
 
@@ -224,7 +234,9 @@ myVar = lerp(colour, dirt, dot(colour, specular));
 return dot(specular, dirt);
 ```
 
+
 <br>
+
 
 ### Math
 
@@ -307,8 +319,8 @@ float4 var2 = ? AMBIENT : SHADOW;
 
 <br>
 
-### Defines
-Defines can be used to replace any word with anything else, just like C
+### Macros
+Macros are substitutions that get replaced before compiling begins, allowing it to do pretty much anything, just like C
 ```hlsl
 #define Tint(base, tintval) base * tintval
 
@@ -322,7 +334,7 @@ float4 PixelShader(colour, specular)
 <br>
 
 ### Functions
-In this shader model, there's no way to call functions, so these are defines that can have multiple lines, meaning they will copy+paste the code inside.
+In this shader model, there's no way to call functions, so these are macros that can have multiple lines, meaning they will copy+paste the code inside.
 ```hlsl
 float4 psMainD3D9(float4 colour, float4 specular, float4 blend)
 {
@@ -356,7 +368,7 @@ meanwhile var2.a = colour.a * 2;
 
 ### Splitting Vectors
 
-In ps.1.1, splitting can only be done if it's ```.xyzw/rgba```, ```.xyz/rgb```, or ```.w/a```
+In the pixel shader, splitting can only be done if it's ```.xyzw/rgba```, ```.xyz/rgb```, or ```.w/a```
 ```hlsl
 myVar = SHADOW.a;
 myVar = AMBIENT.rgb * myVar; // Which is the same as myVar.rgba
@@ -364,7 +376,7 @@ myVar = AMBIENT.rgb * myVar; // Which is the same as myVar.rgba
 myVar = SHADOW.x; // The game can't compile this
 ```
 
-Using z/b is possible, but only when the destination is the alpha channel
+Using z/b is possible, but only when the destination is w/a
 ```hlsl
 myVar.a = SHADOW.z;
 ```
@@ -396,43 +408,20 @@ var1 = "c2" + "c1";
 // or even
 "r0.a" = dot("c2", "c1");
 
-// This can be combined with defines to create keywords that are specific to your shader
+// This can be combined with macros to create keywords that are specific to your shader
 #define AMBIENT "v0"
 #define SHADOW "c2"
 ```
-
-<br>
-
-Lastly, there are some special constants that the game uses, those can be accessed with keywords
-- SHADOW : The shadow mask of the track
-- AMBIENT : Ambient lighting
-- FRESNEL : Fresnel term
-- BLEND : The car body shaders use vertex colours to blend between clean and dirt
-- EXTRA : From what I can tell it's either unused or a duplicate of something else
-
-<br><br>
 
 <br><br>
 
 # Writing the Vertex Shader
 
-Math, define, function, assembly, and string syntax is exactly the same as the pixel shader, so I won't go over those
-
-### Returning
-Normally the vertex shader is a void function, but since you have to write to the position register at some point, I made that the return value.
-
-```hlsl
-float4 VertexShader(float3 pos : POSITION)
-{
-  return pos.xyzz;
-}
-```
-
-<br>
+Math, macro, function, assembly, and string syntax is exactly the same as the pixel shader, so I won't go over those
 
 ### Variables
 
-You can have up to 12 variables, because there's 12 registers to hold values
+You can have up to 12 variables, as there's now 12 registers to hold values
 ```hlsl
 float4 var1 = pos + nrm;
 float4 var2 = dot(nrm, diff);
@@ -450,7 +439,13 @@ float4 const2 = float4(1.0f, 1.0f, 1.0f, 1.0f);
 int4 const3 = int4(1, 2, 3, 4); // ints can be used to index into arrays
 bool2 const4 = bool2(true, false); // I don't know what bools are used for
 ```
+In the vertex shader, the compiler will [automatically pack constants together](https://github.com/ZackWilde27/FlatOut2-HLSLToSHA/wiki/Vertex-Shader-Constant-Packing) to be more efficient
 
+
+<br>
+
+### Keywords
+- CAMERA : The position of the camera in world space
 
 <br>
 
@@ -593,13 +588,10 @@ myVar.zyx = nrm.xyz;
 myVar = pos.yzx * myVar.yxz;
 ```
 
-<br><br>
-
-Lastly, there are some special constants that the vertex shader uses, as I figure more of them out I'll add them here
-- CAMERA : The position of the camera in world space
 
 <br><br>
 
+# Summary
 So in summary I can write a car body shader like this:
 ```hlsl
 float4 VertexShader(float3 pos : POSITION, float3 nrm : NORMAL, float4 diff : COLOR, float2 uvs : TEXCOORD)
