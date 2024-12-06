@@ -25,7 +25,7 @@ Table of Contents
 	- [Intrinsic Functions](https://github.com/ZackWilde27/FlatOut2-HLSLToSHA/tree/main?tab=readme-ov-file#intrinsic-functions)
 	- [Math](https://github.com/ZackWilde27/FlatOut2-HLSLToSHA/tree/main?tab=readme-ov-file#math)
 	- [Modifiers](https://github.com/ZackWilde27/FlatOut2-HLSLToSHA/tree/main?tab=readme-ov-file#modifiers)
-	- [If statements](https://github.com/ZackWilde27/FlatOut2-HLSLToSHA/tree/main?tab=readme-ov-file#if-statements)
+	- [Inline Ifs](https://github.com/ZackWilde27/FlatOut2-HLSLToSHA/tree/main?tab=readme-ov-file#inline-ifs)
 	- [For loops](https://github.com/ZackWilde27/FlatOut2-HLSLToSHA/tree/main?tab=readme-ov-file#for-loops)
 	- [Macros](https://github.com/ZackWilde27/FlatOut2-HLSLToSHA/tree/main?tab=readme-ov-file#macros)
 	- [Functions](https://github.com/ZackWilde27/FlatOut2-HLSLToSHA/tree/main?tab=readme-ov-file#functions)
@@ -42,7 +42,7 @@ Table of Contents
 	- [Textures](https://github.com/ZackWilde27/FlatOut2-HLSLToSHA/tree/main?tab=readme-ov-file#textures)
 	- [Colour Registers](https://github.com/ZackWilde27/FlatOut2-HLSLToSHA/tree/main?tab=readme-ov-file#colour-registers)
 	- [Transforming](https://github.com/ZackWilde27/FlatOut2-HLSLToSHA/tree/main?tab=readme-ov-file#transforming)
-	- [If statements](https://github.com/ZackWilde27/FlatOut2-HLSLToSHA/tree/main?tab=readme-ov-file#if-statements-1)
+	- [Inline Ifs](https://github.com/ZackWilde27/FlatOut2-HLSLToSHA/tree/main?tab=readme-ov-file#inline-ifs-1)
 	- [Splitting Vectors](https://github.com/ZackWilde27/FlatOut2-HLSLToSHA/tree/main?tab=readme-ov-file#splitting-vectors-1)
 
 - [Troubleshooting](https://github.com/ZackWilde27/FlatOut2-HLSLToSHA/blob/main/README.md#troubleshooting)
@@ -188,7 +188,7 @@ Technique T0
 
 FlatOut 2 uses Shader Model 1, which is extremely basic so the HLSL has some quirks.
 
-You can only have 2 variables, since there's 2 registers to hold values
+There's only 2 registers that can be read and written to, so you are limited to 2 variables.
 ```hlsl
 float4 var1 = colour + specular;
 float4 var2 = lerp(var1, dirt, specular.a);
@@ -197,10 +197,10 @@ float4 var3 = dirt; // This will be treated as var2, overwriting the previous le
 
 Though, you can have up to 5 constants, which can hold misc. data for use in the shader (It's actually 8, but the game reserves the first 3)
 ```hlsl
-// Everything is clamped between -1 and 1, at least in the pixel shader.
+// Everything is clamped between -1 and 1 in the pixel shader.
 const float4 const1 = float4(0.0f, 0.0f, 1.0f, 1.0f);
 const float4 const2 = float4(1.0f, 1.0f, 1.0f, 1.0f);
-// the const keyword is optional
+// the const keyword is optional, though sometimes it may be required to stop the compiler getting confused about a vague statement.
 float4 const3 = float4(1.0f, 1.0f, 0.0f, 0.0f);
 //...
 ```
@@ -241,11 +241,9 @@ return dot(specular, dirt);
 
 ### Math
 
-Math is exactly how you'd expect except for the order of operations
+The syntax is just like HLSL/C, but there are some things I should mention
 
 In the pixel shader, dividing can only be done by 2
-
-For example:
 ```hlsl
 myVar = colour + specular;
 myVar *= lighting.a;
@@ -253,7 +251,7 @@ myVar -= dirt;
 myVar = colour / 2;
 
 myVar = -colour;
-// You can also do 1-x
+// The pixel shader can do 1-x for free
 myVar = 1-colour * 1-specular;
 ```
 
@@ -273,6 +271,7 @@ myFloat = colour + specular * myFloat;
 myFloat = specular * myFloat + colour;
 ```
 
+
 <br>
 
 ### Modifiers
@@ -288,7 +287,7 @@ Each of these math modifiers can be used in either function form, exactly like s
 ```hlsl
 myVar = d2(specular * FRESNEL);
 // or
-myVar = (specular * FRESNEL) / 2;
+myVar = specular * FRESNEL / 2;
 
 myVar = x2(specular * FRESNEL);
 // or
@@ -306,9 +305,9 @@ myVar = x2(d2(saturate(x4(specular * FRESNEL))));
 
 <br>
 
-### If statements
+### Inline Ifs
 
-An if statement is technically possible, but it's extremely limited.
+If statements are technically possible, but only inline ones, and they are very limited
 ```hlsl
 float4 var1 = colour;
 float4 var2 = ? AMBIENT : SHADOW;
@@ -316,10 +315,13 @@ float4 var2 = ? AMBIENT : SHADOW;
 // The comparison being done here is (r0.a > 0.5), r0 is your first variable, so in this case it'd be var1
 // So it's essentially:
 //var2 = (var1.a > 0.5) ? AMBIENT : SHADOW;
+```
 
-// Now you can also compare anything to 0 with the format (x [operator] 0 ? y : z)
-// Where [operator] can be >= or <
-var2 = (var1.a >= 0) ? colour : specular;
+Now that the compiler uses ps_1_3, you can compare anything to 0 with the format ```x operator 0 ? y : z```
+
+Where ```operator``` can be >= or <
+```hlsl
+var2 = (lighting.a >= 0) ? colour : specular;
 ```
 
 <br>
@@ -335,19 +337,29 @@ In this shader model there is no branching whatsoever, so these for loops have a
 for (int i = 0; i < 5; i += 1)
 {
 	// This code will be duplicated 5 times
-	var1 *= 2.0f;
+	var1 *= 0.5f;
 }
 ```
 
 If the index is referenced, the compiler will insert the code to keep track of it.
 ```hlsl
-for (float i = 6.0; i > 0.0; i -= 2.0)
+// The floats can't have an f at the end or they won't be recognized in Python
+for (float i = 1.0; i > 0.0; i -= 0.25)
 {
 	var1 += i;
 }
 ```
 
-For loops can be done in the pixel shader but they are a lot more useful in the vertex shader where you can have arrays.
+Since Python is the one doing the looping, I added the option to write it in a pythonic way with range().
+```hlsl
+// Just like python, it can accept 1-3 inputs indicating the start, end, and step
+for i in range(5)
+{
+	var1 *= 0.5f;
+}
+```
+
+For loops can be done in the pixel shader but they are a lot more useful in the vertex shader with arrays.
 
 <br>
 
@@ -504,7 +516,7 @@ float4 myList[] =
 };
 ```
 
-Then the array can be indexed however
+Then the array can be indexed as usual
 ```hlsl
 // floats will be rounded to the nearest integer to get the index
 var2 = myList[var1.x * 2.0f] + var1.y;
@@ -599,7 +611,7 @@ float4 var3 = LocalToScreen(pos);
 
 <br>
 
-### If statements
+### Inline Ifs
 If statements are possible, but extremely limited, and in a completely different way.
 ```hlsl
 float4 var1 = pos;
