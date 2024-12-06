@@ -26,6 +26,7 @@ Table of Contents
 	- [Math](https://github.com/ZackWilde27/FlatOut2-HLSLToSHA/tree/main?tab=readme-ov-file#math)
 	- [Modifiers](https://github.com/ZackWilde27/FlatOut2-HLSLToSHA/tree/main?tab=readme-ov-file#modifiers)
 	- [If statements](https://github.com/ZackWilde27/FlatOut2-HLSLToSHA/tree/main?tab=readme-ov-file#if-statements)
+	- [For loops](https://github.com/ZackWilde27/FlatOut2-HLSLToSHA/tree/main?tab=readme-ov-file#for-loops)
 	- [Macros](https://github.com/ZackWilde27/FlatOut2-HLSLToSHA/tree/main?tab=readme-ov-file#macros)
 	- [Functions](https://github.com/ZackWilde27/FlatOut2-HLSLToSHA/tree/main?tab=readme-ov-file#functions)
 	- [Meanwhile](https://github.com/ZackWilde27/FlatOut2-HLSLToSHA/tree/main?tab=readme-ov-file#meanwhile)
@@ -187,7 +188,7 @@ Technique T0
 
 FlatOut 2 uses Shader Model 1, which is extremely basic so the HLSL has some quirks.
 
-You can only have 2 variables, because there's 2 registers to hold values
+You can only have 2 variables, since there's 2 registers to hold values
 ```hlsl
 float4 var1 = colour + specular;
 float4 var2 = lerp(var1, dirt, specular.a);
@@ -315,7 +316,38 @@ float4 var2 = ? AMBIENT : SHADOW;
 // The comparison being done here is (r0.a > 0.5), r0 is your first variable, so in this case it'd be var1
 // So it's essentially:
 //var2 = (var1.a > 0.5) ? AMBIENT : SHADOW;
+
+// Now you can also compare anything to 0 with the format (x [operator] 0 ? y : z)
+// Where [operator] can be >= or <
+var2 = (var1.a >= 0) ? colour : specular;
 ```
+
+<br>
+
+### For loops
+
+In this shader model there is no branching whatsoever, so these for loops have a few limitations:
+
+- The number of iterations has to be pre-determined, since the compiler simply duplicates the code however many times
+ 
+- There's no way to end it early, so you can't ```break```, ```continue```, or ```return```.
+```hlsl
+for (int i = 0; i < 5; i += 1)
+{
+	// This code will be duplicated 5 times
+	var1 *= 2.0f;
+}
+```
+
+If the index is referenced, the compiler will insert the code to keep track of it.
+```hlsl
+for (float i = 6.0; i > 0.0; i -= 2.0)
+{
+	var1 += i;
+}
+```
+
+For loops can be done in the pixel shader but they are a lot more useful in the vertex shader where you can have arrays.
 
 <br>
 
@@ -417,7 +449,7 @@ var1 = "c2" + "c1";
 
 # Writing the Vertex Shader
 
-Math, macro, function, assembly, and string syntax is exactly the same as the pixel shader, so I won't go over those
+Math, macro, function, for loops, assembly, and string syntax is exactly the same as the pixel shader, so I won't go over those
 
 ### Variables
 
@@ -486,7 +518,8 @@ The supported intrinsic functions are as follows:
 - abs()
 - clamp()*
 - degrees()*
-- distance() / dst()
+- distance()*
+- dst()
 - dot()
 - exp2() (exp2_full() to use the accurate but expensive version)
 - floor()*
@@ -567,7 +600,7 @@ float4 var3 = LocalToScreen(pos);
 <br>
 
 ### If statements
-If statements are possible, but extemely limited, and in a completely different way.
+If statements are possible, but extremely limited, and in a completely different way.
 ```hlsl
 float4 var1 = pos;
 float4 var2 = var1.x > pos.y ?;
