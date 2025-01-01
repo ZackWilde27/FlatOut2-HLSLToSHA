@@ -1,5 +1,5 @@
 # Zack's HLSL to FlatOut SHA
-version = "v2.5"
+version = "v2.5.1"
 # Am I particularly proud of this code? uhh
 
 try:
@@ -706,7 +706,7 @@ def CompileOperand_PartialPS(string, ext="", dst="", components=4):
                 
                 values = [item.strip() for item in string[string.index("?") + 1:].split(":")]
                 
-                return [dst, "cmp" + ext + "\t" + ", ".join([dst, HVarNameToRegister(src0)]) + symbolMeanings[dex].replace("%0", HVarNameToRegister(values[0])).replace("%1", HVarNameToRegister(values[1]))]
+                return [dst, "cmp" + ext + "\t" + ", ".join([dst, HVarNameToRegister(src0)]) + symbolMeanings[dex].replace("%0", HVarNameToRegister(values[0])).replace("%1", HVarNameToRegister(values[1])) + "\n"]
 
         dex = string.index("?") + 1
         inner = string[dex:].split(":")
