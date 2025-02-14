@@ -30,7 +30,7 @@ Table of Contents
 	- [Macros](https://github.com/ZackWilde27/FlatOut2-HLSLToSHA/tree/main?tab=readme-ov-file#macros)
 	- [Functions](https://github.com/ZackWilde27/FlatOut2-HLSLToSHA/tree/main?tab=readme-ov-file#functions)
 	- [Meanwhile](https://github.com/ZackWilde27/FlatOut2-HLSLToSHA/tree/main?tab=readme-ov-file#meanwhile)
-	- [Splitting Vectors](https://github.com/ZackWilde27/FlatOut2-HLSLToSHA/tree/main?tab=readme-ov-file#splitting-vectors)
+	- [Swizzling Vectors](https://github.com/ZackWilde27/FlatOut2-HLSLToSHA/tree/main?tab=readme-ov-file#splitting-vectors)
 	- [Assembly](https://github.com/ZackWilde27/FlatOut2-HLSLToSHA/tree/main?tab=readme-ov-file#assembly)
 	- [Strings](https://github.com/ZackWilde27/FlatOut2-HLSLToSHA/tree/main?tab=readme-ov-file#strings)
 
@@ -43,7 +43,7 @@ Table of Contents
 	- [Colour Registers](https://github.com/ZackWilde27/FlatOut2-HLSLToSHA/tree/main?tab=readme-ov-file#colour-registers)
 	- [Transforming](https://github.com/ZackWilde27/FlatOut2-HLSLToSHA/tree/main?tab=readme-ov-file#transforming)
 	- [Inline Ifs](https://github.com/ZackWilde27/FlatOut2-HLSLToSHA/tree/main?tab=readme-ov-file#inline-ifs-1)
-	- [Splitting Vectors](https://github.com/ZackWilde27/FlatOut2-HLSLToSHA/tree/main?tab=readme-ov-file#splitting-vectors-1)
+	- [Swizzling Vectors](https://github.com/ZackWilde27/FlatOut2-HLSLToSHA/tree/main?tab=readme-ov-file#splitting-vectors-1)
 
 - [Troubleshooting](https://github.com/ZackWilde27/FlatOut2-HLSLToSHA/blob/main/README.md#troubleshooting)
 
@@ -188,11 +188,29 @@ Technique T0
 
 FlatOut 2 uses Shader Model 1, which is extremely basic so the HLSL has some quirks.
 
-There's only 2 registers that can be read and written to, so you are limited to 2 variables.
+There's only 2 registers that can be both read and written to, so you are limited to 2 variables at one time.
 ```hlsl
 float4 var1 = colour + specular;
 float4 var2 = lerp(var1, dirt, specular.a);
 float4 var3 = dirt; // This will be treated as var2, overwriting the previous lerp
+```
+
+The compiler will recognize when variables are no longer needed to free-up registers, allowing for what looks like more than 2 variables
+```hlsl
+float4 PixelShader()
+{
+	float4 var1 = colour + specular;
+	float4 var2 = var1 + dirt;
+
+	// var1 is not referenced beyond this point, so another variable can take its place
+	// though I just discovered a new bug as I'm writing this where it waits an extra statement
+	// so I need to add a line in-between to make sure var1 is deleted
+	var2 += 0.0f;
+
+	// now it can be replaced
+	float4 var3 = var2 + lighting.a;
+	return var3;
+}
 ```
 
 Though, you can have up to 5 constants, which can hold misc. data for use in the shader (It's actually 8, but the game reserves the first 3)
@@ -200,8 +218,10 @@ Though, you can have up to 5 constants, which can hold misc. data for use in the
 // Everything is clamped between -1 and 1 in the pixel shader.
 const float4 const1 = float4(0.0f, 0.0f, 1.0f, 1.0f);
 const float4 const2 = float4(1.0f, 1.0f, 1.0f, 1.0f);
-// the const keyword is optional, though sometimes it may be required to stop the compiler getting confused about a vague statement.
+// the const keyword is optional
 float4 const3 = float4(1.0f, 1.0f, 0.0f, 0.0f);
+// Though a single float will confuse it, so make sure to put const
+const float const4 = 1.0f;
 //...
 ```
 
@@ -350,12 +370,15 @@ for (float i = 1.0; i > 0.0; i -= 0.25)
 }
 ```
 
-Since Python is the one doing the looping, I added the option to write it in a pythonic way with range().
+Since Python is the one doing the looping, I added the option to write it in a pythonic way.
 ```hlsl
 // Just like python, it can accept 1-3 inputs indicating the start, end, and step
 for i in range(5)
 {
-	var1 *= 0.5f;
+	for j in range(5, 50)
+	{
+		var1 *= 0.5f;
+	}
 }
 ```
 
@@ -404,15 +427,14 @@ One of them needs to write to .rgb, and the other needs to write to .a
 ```hlsl
 var1.rgb = colour.a;
 meanwhile var2.a = colour.a * 2;
-// You can't have more than 2 instructions run in parallel
 ```
 
 
 <br>
 
-### Splitting Vectors
+### Swizzling Vectors
 
-In the pixel shader, splitting can only be done if it's ```.xyzw/rgba```, ```.xyz/rgb```, or ```.w/a```
+In the pixel shader, swizzling can only be done if it's ```.xyzw/rgba```, ```.xyz/rgb```, or ```.w/a```
 ```hlsl
 myVar = SHADOW.a;
 myVar = AMBIENT.rgb * myVar; // Which is the same as myVar.rgba
@@ -485,11 +507,13 @@ bool2 const4 = bool2(true, false); // I don't know what bools are used for
 ```
 In the vertex shader, the compiler will [automatically pack constants together](https://github.com/ZackWilde27/FlatOut2-HLSLToSHA/wiki/Vertex-Shader-Constant-Packing) to be more efficient
 
-
 <br>
 
 ### Keywords
 - CAMERA : The position of the camera in world space
+- PLANEX : The ambient x-plane's normal, in world space
+- PLANEY : The ambient y-plane's normal, in world space
+- PLANEZ : The ambient z-plane's normal, in world space
 
 <br>
 
@@ -520,6 +544,14 @@ Then the array can be indexed as usual
 ```hlsl
 // floats will be rounded to the nearest integer to get the index
 var2 = myList[var1.x * 2.0f] + var1.y;
+```
+
+Also, pythonic fors can be used to loop through each item
+```hlsl
+for i in myList
+{
+	myVar += i;
+}
 ```
 
 <br>
@@ -561,6 +593,10 @@ myVar = max(min(myVar, 1.0f), 0.0f);
 return normalize(nrm);
 ```
 
+I also added some new functions in the same vein as rsqrt()
+- rlength()
+- rdistance()
+
 <br>
 
 ### Textures
@@ -579,7 +615,7 @@ float4 VertexShader(float3 pos : POSITION, float3 nrm : NORMAL, float2 uvs : TEX
 
 float4 PixelShader(float4 colour, float4 specular)
 {
-
+	//...
 }
 ```
 
@@ -625,9 +661,9 @@ float4 var2 = var1.x > pos.y ?;
 
 <br>
 
-### Splitting Vectors
+### Swizzling Vectors
 
-In vs.1.1, splitting/swizzling is a lot less restrictive.
+In the vertex shader, swizzling is a lot less restrictive.
 ```hlsl
 myVar.zyx = nrm.xyz;
 myVar = pos.yzx * myVar.yxz;
@@ -665,9 +701,9 @@ float4 VertexShader(float3 pos : POSITION, float3 nrm : NORMAL, float4 diff : CO
   FRESNEL = mad(f.y, 0.5f, 0.5f);
 
   float3 inAmbient;
-  inAmbient.x = sqrt(dot(worldNormal, "c17"));
-  inAmbient.y = sqrt(dot(worldNormal, "c18"));
-  inAmbient.z = sqrt(dot(worldNormal, "c19"));
+  inAmbient.x = sqrt(dot(worldNormal, PLANEX));
+  inAmbient.y = sqrt(dot(worldNormal, PLANEY));
+  inAmbient.z = sqrt(dot(worldNormal, PLANEZ));
 
   AMBIENT = inAmbient;
 
