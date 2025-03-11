@@ -1,5 +1,5 @@
 # Zack's HLSL to FlatOut SHA
-version = "v2.7.2"
+version = "v2.7.3"
 # Am I particularly proud of this code? uhh
 
 try:
@@ -1548,7 +1548,7 @@ while stuckInLoop:
                 else:
                     textures = len(inputs)
                     for i, put in enumerate(inputs):
-                        newType = "f4"
+                        newType = ""
                         if " " in put.strip():
                             n = put.strip().split(" ")[-2]
                             if (not IsType(n)) and n != "tex":
