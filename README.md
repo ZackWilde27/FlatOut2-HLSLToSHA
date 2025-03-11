@@ -27,7 +27,7 @@ Table of Contents
 	- [Modifiers](https://github.com/ZackWilde27/FlatOut2-HLSLToSHA/tree/main?tab=readme-ov-file#modifiers)
 	- [Inline Ifs](https://github.com/ZackWilde27/FlatOut2-HLSLToSHA/tree/main?tab=readme-ov-file#inline-ifs)
 	- [For loops](https://github.com/ZackWilde27/FlatOut2-HLSLToSHA/tree/main?tab=readme-ov-file#for-loops)
-	- [Macros](https://github.com/ZackWilde27/FlatOut2-HLSLToSHA/tree/main?tab=readme-ov-file#macros)
+	- [Preprocessor](https://github.com/ZackWilde27/FlatOut2-HLSLToSHA/tree/main?tab=readme-ov-file#preprocessor)
 	- [Functions](https://github.com/ZackWilde27/FlatOut2-HLSLToSHA/tree/main?tab=readme-ov-file#functions)
 	- [Meanwhile](https://github.com/ZackWilde27/FlatOut2-HLSLToSHA/tree/main?tab=readme-ov-file#meanwhile)
 	- [Swizzling Vectors](https://github.com/ZackWilde27/FlatOut2-HLSLToSHA/tree/main?tab=readme-ov-file#swizzling-vectors)
@@ -136,7 +136,7 @@ float4 VertexShader()
 }
 ```
 
-These inputs require semantics, as it's up to you which inputs are given to the shader.
+These inputs require semantics, as it's up to you which ones are given to the shader
 
 For example:
 ```hlsl
@@ -203,8 +203,8 @@ float4 PixelShader()
 	float4 var2 = var1 + dirt;
 
 	// var1 is not referenced beyond this point, so another variable can take its place
-	// though I just discovered a new bug as I'm writing this where it waits an extra statement
-	// so I need to add a line in-between to make sure var1 is deleted
+	// I somehow forgot about this bug when I was working on this patch
+	// I have to add a line in-between to make sure var1 is deleted
 	var2 += 0.0f;
 
 	// now it can be replaced
@@ -385,8 +385,15 @@ For loops can be done in the pixel shader but they are a lot more useful in the 
 
 <br>
 
-### Macros
-Macros are substitutions that get replaced before compiling begins, allowing it to do pretty much anything, just like C
+### Preprocessor
+The compiler supports these preprocessor directives:
+- #define
+- #include
+- #ifdef/#ifndef
+
+If you've written C code, you know how these work, but for people who haven't:
+
+Define creates a substitution that get replaced before compiling begins, allowing it to do pretty much anything, just like C
 ```hlsl
 #define Tint(base, tintval) base * tintval
 
@@ -394,6 +401,43 @@ float4 PixelShader(colour, specular)
 {
   return Tint(specular, colour);
 }
+```
+
+Ifdef/ifndef can be used to either selectively include code, or switch between 2 blocks of code
+```hlsl
+#define MYDEFINITION
+
+float4 PixelShader(colour, specular)
+{
+	// This code will only be included if MYDEFINITION is not defined
+	#ifndef MYDEFINITION
+		float4 thisVariable = colour;
+	#endif
+
+
+	// This one will switch between two blocks of code
+	#ifdef MYDEFINITION
+		return colour + specular;
+	#else
+		return thisVariable * specular;
+	#endif
+}
+```
+
+Include is used to paste the contents of another file in a particular location, so you can have commonly-used code in a separate file
+```hlsl
+// In my 'utils.hlsl' file:
+#define Tint(a, b) a * b
+```
+```hlsl
+// Then in the actual file:
+#include "utils.hlsl"
+
+float4 PixelShader(colour, specular)
+{
+	return Tint(colour, specular)
+}
+
 ```
 
 
@@ -476,6 +520,10 @@ var1 = "c2" + "c1";
 // This can be combined with macros to create keywords that are specific to your shader
 #define AMBIENT "v0"
 #define SHADOW "c2"
+
+// The 'string' type is another way to create string macros
+string AMBIENT = "v0";
+const string SHADOW = "c2";
 ```
 
 <br><br>
