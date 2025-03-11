@@ -1,5 +1,5 @@
 # Zack's HLSL to FlatOut SHA
-version = "v2.7"
+version = "v2.7.1"
 # Am I particularly proud of this code? uhh
 
 try:
@@ -90,7 +90,7 @@ hfuncs = [HFunc("dot", "dp3\t%0, %1, %2"), HFunc("lerp", "lrp\t%0, %3, %1, %2"),
 def ResetDHVars(isPS=isPixelShader):
     global dhvars
     dhvars = dhvars[dhvars.index("%split%"):]
-    dhvars = ([HVar("SHADOW", "c2", "", "f4"), HVar("AMBIENT", "v0", "", "f3"), HVar("FRESNEL", "v0.a", "", "f1", 3), HVar("BLEND", "v1.a", "", "f1", 3), HVar("EXTRA", "v1", "", "f3")] if isPS else [HVar("FRESNEL", "oD0", "", "f1", 3), HVar("AMBIENT", "oD0.xyz", "", "f3"), HVar("BLEND", "oD1", "", "f1", 3), HVar("EXTRA", "oD1.xyz", "", "f3"), HVar("CAMERA", "c8", "", "f3"), HVar("PLANEX", "c17", "", "f4"), HVar("PLANEY", "c18", "", "f4"), HVar("PLANEZ", "c19", "", "f4")]) + dhvars
+    dhvars = ([HVar("SHADOW", "c2", "", "f4"), HVar("AMBIENT", "v0", "", "f3"), HVar("FRESNEL", "v0.a", "", "f1"), HVar("BLEND", "v1.a", "", "f1"), HVar("EXTRA", "v1", "", "f3")] if isPS else [HVar("FRESNEL", "oD0", "", "f1", 3), HVar("AMBIENT", "oD0.xyz", "", "f3"), HVar("BLEND", "oD1", "", "f1"), HVar("EXTRA", "oD1.xyz", "", "f3"), HVar("CAMERA", "c8", "", "f3"), HVar("PLANEX", "c17", "", "f4"), HVar("PLANEY", "c18", "", "f4"), HVar("PLANEZ", "c19", "", "f4")]) + dhvars
 
 def PSTexToVSTex():
     for dhvar in dhvars:
@@ -385,9 +385,13 @@ def HVarNameToRegister(name, swizzle=True):
                 ext = "." + "xyzw"[:int(exptype[1])]
 
             register = hv.register
-            if ext and "." in hv.register:
-                register = hv.register[:hv.register.index(".")]
-            
+            if "." in register:
+                if ext:
+                    register = register[:register.index(".")]
+                else:
+                    ext = register[register.index(".") + 1:]
+                    register = register[:register.index(".") + 1]
+
             return prefix + register + OffsetProperty(ext, hv.offset)
 
         Error("HVarNameToRegister(): Unknown Variable [" + name + "]")
@@ -1252,9 +1256,9 @@ def CompileHLSL(script, localVars=-1, dst="r0", inGlobal=0):
                             if name in hvars + dhvars:
                                 hv = HVarNameToVar(name)
                                 if hv:
-                                    if hv.offset or (int(hv.type[1]) != 4) and not extension:
+                                    if (hv.offset or (int(hv.type[1]) != 4)) and not extension:
                                         extension = "." + "xyzw"[hv.offset:hv.offset + int(hv.type[1])]
-                                    output += ("+" if bMeanwhile else "") + CompileOperand(line[line.index("=") + 1:], "", HandleString("\"" + hv.register + "\"" + OffsetProperty(HandleProperty(extension), hv.offset)), int(hv.type[1]))[1]
+                                    output += ("+" if bMeanwhile else "") + CompileOperand(line[line.index("=") + 1:], "", HandleString("\"" + hv.register + "\"" + HandleProperty(extension)), int(hv.type[1]))[1]
                                 else:
                                     Error("Syntax Error: Unknown token: " + Surround(name))
                             else:
@@ -1485,7 +1489,7 @@ while stuckInLoop:
     if getmtime(filename) != mtime:
             tstruct = localtime(time())
             mtime = getmtime(filename)
-            dhvars = [HVar("SHADOW", "c2", "", "f4"), HVar("AMBIENT", "v0", "", "f3"), HVar("FRESNEL", "v0.a", "", "f1", 3), HVar("BLEND", "v1.a", "", "f1", 3), HVar("%split%", "", "", "")]
+            dhvars = [HVar("SHADOW", "c2", "", "f4"), HVar("AMBIENT", "v0", "", "f3"), HVar("FRESNEL", "v0.a", "", "f1"), HVar("BLEND", "v1.a", "", "f1"), HVar("%split%", "", "", "")]
             ResetDHVars(True)
             hvars = []
             fvars = []
@@ -1551,7 +1555,7 @@ while stuckInLoop:
                                 newType = n
                                 
                             put = put.strip().split(" ")[-1]
-                        dhvars.append(HVar(put.strip(), "t" + str(i), "", newType))
+                        dhvars.append(HVar(put.strip(), "t" + str(i), newType, "f4"))
 
             psSnapshot = [item for item in dhvars]
 
@@ -1656,8 +1660,8 @@ while stuckInLoop:
                             compiledpixelshader = "\n" + compiledpixelshader
                             for i in range(textures - 1, -1, -1):
                                 hv = HVarRegisterToVar("t" + str(i))
-                                if hv.type[1] not in "0123456789":
-                                    prefix = hv.type
+                                if hv.value in ["texcoord", "texkill"]:
+                                    prefix = hv.value
                                 else:
                                     prefix = "tex"
                                 compiledpixelshader = prefix + "\tt" + str(i) + "\t// " + hv.name + "\n" + compiledpixelshader
