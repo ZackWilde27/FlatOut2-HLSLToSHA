@@ -203,11 +203,6 @@ float4 PixelShader()
 	float4 var2 = var1 + dirt;
 
 	// var1 is not referenced beyond this point, so another variable can take its place
-	// I somehow forgot about this bug when I was working on this patch
-	// I have to add a line in-between to make sure var1 is deleted
-	var2 += 0.0f;
-
-	// now it can be replaced
 	float4 var3 = var2 + lighting.a;
 	return var3;
 }
