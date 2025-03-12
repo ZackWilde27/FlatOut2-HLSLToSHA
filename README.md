@@ -81,7 +81,7 @@ It returns the final colour of the pixel
 ```hlsl
 float4 PixelShader()
 {
-  // Code in here will run for every pixel drawn
+    // Code in here will run for every pixel drawn
 }
 ```
 
@@ -89,7 +89,7 @@ The inputs of the PixelShader function corrospond to texture samples, so to outp
 ```hlsl
 float4 PixelShader(float4 tex0)
 {
-  return tex0;
+    return tex0;
 }
 ```
 
@@ -109,7 +109,7 @@ So my re-implementation would look something like this:
 ```hlsl
 float4 PixelShader(float4 colour, float4 specular, float4 dirt, float4 lighting)
 {
-  //...
+    //...
 }
 ```
 
@@ -132,7 +132,7 @@ It returns the position of the vertex in screen space
 ```hlsl
 float4 VertexShader()
 {
-  // Code in here will run for each vertex in the mesh
+    // Code in here will run for each vertex in the mesh
 }
 ```
 
@@ -169,11 +169,11 @@ float4 PixelShader() { ... }
 
 Technique T0
 {
-  Pass P0
-  {
-    MinFilter[1] = Point;
-    MagFilter[1] = Point;
-  }
+    Pass P0
+    {
+        MinFilter[1] = Point;
+        MagFilter[1] = Point;
+    }
 }
 ```
 
@@ -199,12 +199,12 @@ The compiler will recognize when variables are no longer needed to free-up regis
 ```hlsl
 float4 PixelShader()
 {
-	float4 var1 = colour + specular;
-	float4 var2 = var1 + dirt;
+    float4 var1 = colour + specular;
+    float4 var2 = var1 + dirt;
 
-	// var1 is not referenced beyond this point, so another variable can take its place
-	float4 var3 = var2 + lighting.a;
-	return var3;
+    // var1 is not referenced beyond this point, so another variable can take its place
+    float4 var3 = var2 + lighting.a;
+    return var3;
 }
 ```
 
@@ -351,8 +351,8 @@ In this shader model there is no branching whatsoever, so these for loops have a
 ```hlsl
 for (int i = 0; i < 5; i += 1)
 {
-	// This code will be duplicated 5 times
-	var1 *= 0.5f;
+    // This code will be duplicated 5 times
+    var1 *= 0.5f;
 }
 ```
 
@@ -360,7 +360,7 @@ If the index is referenced, the compiler will insert the code to keep track of i
 ```hlsl
 for (float i = 1.0f; i > 0.0f; i -= 0.25f)
 {
-	var1 += i;
+    var1 += i;
 }
 ```
 
@@ -369,10 +369,10 @@ Since Python is the one doing the looping, I added the option to write it in a p
 // Just like python, it can accept 1-3 inputs indicating the start, end, and step
 for i in range(5)
 {
-	for j in range(5, 50)
-	{
-		var1 *= 0.5f;
-	}
+    for j in range(5, 50)
+    {
+        var1 *= 0.5f;
+    }
 }
 ```
 
@@ -386,16 +386,23 @@ The compiler supports these preprocessor directives:
 - #include
 - #ifdef/#ifndef
 
-If you've written C code, you know how these work, but for people who haven't:
+If you've written C code, you know how these work, but for people who haven't or to clarify:
 
-Define creates a substitution that get replaced before compiling begins, allowing it to do pretty much anything, just like C
+Define can create a substitution for some other text that gets replaced before the script is compiled, so it could be a stand-in for a type, function, anything really
 ```hlsl
 #define Tint(base, tintval) base * tintval
 
-float4 PixelShader(colour, specular)
-{
-  return Tint(specular, colour);
-}
+#define function float4
+#define let float4
+#define std::cout return
+#define << 
+#define : {
+#define end }
+
+function PixelShader(colour, specular):
+    let c = Tint(specular, colour);
+    std::cout << c;
+end
 ```
 
 Ifdef/ifndef can be used to either selectively include code, or switch between 2 blocks of code
@@ -404,18 +411,18 @@ Ifdef/ifndef can be used to either selectively include code, or switch between 2
 
 float4 PixelShader(colour, specular)
 {
-	// This code will only be included if MYDEFINITION is not defined
-	#ifndef MYDEFINITION
-		float4 thisVariable = colour;
-	#endif
+    // This code will only be included if MYDEFINITION is not defined
+    #ifndef MYDEFINITION
+        float4 thisVariable = colour;
+    #endif
 
 
-	// This one will switch between two blocks of code
-	#ifdef MYDEFINITION
-		return colour + specular;
-	#else
-		return thisVariable * specular;
-	#endif
+    // This one will switch between two blocks of code
+    #ifdef MYDEFINITION
+        return colour + specular;
+    #else
+        return thisVariable * specular;
+    #endif
 }
 ```
 
@@ -430,7 +437,7 @@ Include is used to paste the contents of another file in a particular location, 
 
 float4 PixelShader(colour, specular)
 {
-	return Tint(colour, specular)
+    return Tint(colour, specular);
 }
 
 ```
@@ -443,16 +450,16 @@ In this shader model, there's no way to call functions, so these are macros that
 ```hlsl
 float4 psMainD3D9(float4 colour, float4 specular, float4 blend)
 {
-  float4 scratchValue; // reserves r0 for the if statement  
+    float4 scratchValue; // reserves r0 for the if statement  
 
-  // Implements (a > b) ? ifA : ifB;
-  float4 GreaterThan(a, b, ifA, ifB)
-  {
-    scratchValue.a = a - b + 0.5f;
-    return ? ifA : ifB;
-  }
+    // Implements (a > b) ? ifA : ifB;
+    float4 GreaterThan(a, b, ifA, ifB)
+    {
+        scratchValue.a = a - b + 0.5f;
+        return ? ifA : ifB;
+    }
 
-  return GreaterThan(blend, 0.25f, colour, specular);
+    return GreaterThan(blend, 0.25f, colour, specular);
 }
 ```
 
@@ -494,9 +501,9 @@ The ```asm``` keyword can be used to insert assembly if you absolutely have to
 float4 myVar = colour;
 asm
 {
-  mov r0, t0
-  // When inserting assembly in a function, you can access the return value with %0, and the parameters with %1, %2, and so on
-  dp3 %0, %1, %2
+    mov r0, t0
+    // When inserting assembly in a function, you can access the return value with %0, and the parameters with %1, %2, and so on
+    dp3 %0, %1, %2
 }
 ```
 
@@ -566,9 +573,9 @@ Arrays can be defined with either ```{}``` or ```[]```
 float3 list1[1] = [ float3(1.0f, 1.0f, 1.0f) ];
 
 float2 myList[] = {
-  float2(1.0f, 0.0f),
-  float2(0.0f, 1.0f),
-  float2(1.0f, 0.0f)
+    float2(1.0f, 0.0f),
+    float2(0.0f, 1.0f),
+    float2(1.0f, 0.0f)
 };
 ```
 
@@ -576,9 +583,9 @@ They can have items of varying type but they won't be packed together
 ```hlsl
 float4 myList[] =
 {
-  float2(1.0f, 0.0f),
-  float3(0.5f, 0.25f, 0.125f),
-  0.75f
+    float2(1.0f, 0.0f),
+    float3(0.5f, 0.25f, 0.125f),
+    0.75f
 };
 ```
 
@@ -592,7 +599,7 @@ Also, pythonic fors can be used to loop through each item
 ```hlsl
 for i in myList
 {
-	myVar += i;
+    myVar += i;
 }
 ```
 
@@ -648,16 +655,16 @@ For example:
 ```hlsl
 float4 VertexShader(float3 pos : POSITION, float3 nrm : NORMAL, float2 uvs : TEXCOORD)
 {
-  colour.uv = uvs.xy;
+    colour.uv = uvs.xy;
 
-  // Cubemaps use a direction as the coordinates instead of the given UVs
-  // For a specular map, you'll want to use the reflection vector
-  specular.xyz = nrm;
+    // Cubemaps use a direction as the coordinates instead of the given UVs
+    // For a specular map, you'll want to use the reflection vector
+    specular.xyz = nrm;
 }
 
 float4 PixelShader(float4 colour, float4 specular)
 {
-	//...
+    //...
 }
 ```
 
@@ -719,37 +726,37 @@ So in summary I can write a car body shader like this:
 ```hlsl
 float4 VertexShader(float3 pos : POSITION, float3 nrm : NORMAL, float4 diff : COLOR, float2 uvs : TEXCOORD)
 {
-  colour.uv = uvs.xy;
-  dirt.uv = uvs.xy;
+    colour.uv = uvs.xy;
+    dirt.uv = uvs.xy;
 
-  float3 worldNormal = RotateToWorld(nrm);
+    float3 worldNormal = RotateToWorld(nrm);
 
-  // The lighting cubemap can just be given the world normal
-  lighting.xyz = worldNormal;
+    // The lighting cubemap can just be given the world normal
+    lighting.xyz = worldNormal;
 
-  // Calculate the reflection vector for the specular cubemap
-  float3 worldPos = LocalToWorld(pos);
-  float4 incident = normalize(worldPos - CAMERA);
-  specular.xyz = reflect(incident, worldNormal);
+    // Calculate the reflection vector for the specular cubemap
+    float3 worldPos = LocalToWorld(pos);
+    float4 incident = normalize(worldPos - CAMERA);
+    specular.xyz = reflect(incident, worldNormal);
 
-  // The blend factor for the car body comes from the COLOR input
-  BLEND = diff;
+    // The blend factor for the car body comes from the COLOR input
+    BLEND = diff;
 
-  // Fresnel
-  float4 f;
-  f.x = abs(dot(incident, worldNormal));
-  f.x = 1.0f - f.x;
-  f.y = f.x * f.x * f.x;
-  FRESNEL = mad(f.y, 0.5f, 0.5f);
+    // Fresnel
+    float4 f;
+    f.x = abs(dot(incident, worldNormal));
+    f.x = 1.0f - f.x;
+    f.y = f.x * f.x * f.x;
+    FRESNEL = mad(f.y, 0.5f, 0.5f);
 
-  float3 inAmbient;
-  inAmbient.x = sqrt(dot(worldNormal, PLANEX));
-  inAmbient.y = sqrt(dot(worldNormal, PLANEY));
-  inAmbient.z = sqrt(dot(worldNormal, PLANEZ));
+    float3 inAmbient;
+    inAmbient.x = sqrt(dot(worldNormal, PLANEX));
+    inAmbient.y = sqrt(dot(worldNormal, PLANEY));
+    inAmbient.z = sqrt(dot(worldNormal, PLANEZ));
 
-  AMBIENT = inAmbient;
+    AMBIENT = inAmbient;
 
-  return LocalToScreen(pos);
+    return LocalToScreen(pos);
 }
 
 
@@ -769,12 +776,10 @@ Bonus tip: The return value and parameter types can all be assumed so they are o
 ```hlsl
 VertexShader(pos : POSITION)
 {
-    //...
 }
 
 PixelShader(colour, specular, dirt, lighting)
 {
-
 }
 ```
 
