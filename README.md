@@ -396,13 +396,11 @@ Define can create a substitution for some other text that gets replaced before t
 #define let float4
 #define std::cout return
 #define << 
-#define : {
-#define end }
 
-function PixelShader(colour, specular):
+function PixelShader(colour, specular) {
     let c = Tint(specular, colour);
     std::cout << c;
-end
+}
 ```
 
 Ifdef/ifndef can be used to either selectively include code, or switch between 2 blocks of code
