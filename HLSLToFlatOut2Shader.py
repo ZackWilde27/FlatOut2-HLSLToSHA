@@ -1,5 +1,5 @@
 # Zack's HLSL to FlatOut SHA
-version = "v2.7.3"
+version = "v2.7.4"
 # Am I particularly proud of this code? uhh
 
 try:
@@ -275,6 +275,20 @@ def BreakdownMath(line):
 
     tokes = [item.strip() for item in tokes]
 
+    if isPixelShader:
+        i = 0
+        while True:
+            try:
+                i = tokes.index("*", i)
+            except ValueError:
+                break
+
+            if tokes[i + 1] in ["2", "4"]:
+                tokes[i - 1] = tokes[i - 1] + tokes[i] + tokes[i + 1]
+                tokes = tokes[:i] + tokes[i + 2:]
+
+            i += 1
+
     i = 0
     allConst = True
     while i < len(tokes):
@@ -306,19 +320,7 @@ def BreakdownMath(line):
             allConst = False
         i += 1
 
-    if isPixelShader:
-        i = 0
-        while True:
-            try:
-                i = tokes.index("*", i)
-            except ValueError:
-                break
 
-            if tokes[i + 1] in ["2", "4"]:
-                tokes[i - 1] = tokes[i - 1] + tokes[i] + tokes[i + 1]
-                tokes = tokes[:i] + tokes[i + 2:]
-
-            i += 1
 
     return tokes
 
@@ -359,6 +361,11 @@ def TypeIdFromName(name):
 def HVarNameToRegister(name, swizzle=True):
     allhvars = dhvars + hvars
     exptype = ""
+
+    if not name:
+        Error("Empty string passed to HVarNameToRegister, I need to debug that")
+        return "r0"
+
     if name[0] == "(":
         exptype = TypeIdFromName(name[1:name.index(")")])
         name = name[name.index(")") + 1:]
@@ -574,10 +581,10 @@ def GetRegisterType(register):
     return "f4"
 
 # Skips strings, parenthasis, and brackets
-def IndexOfSafe(string, item):
+def IndexOfSafe(string, item, start=0):
     depth = 0
     inString = False
-    for index, char in enumerate(string):
+    for index, char in enumerate(string[start:]):
         if char in "[(":
             depth += 1
         if char in "])":
@@ -589,20 +596,18 @@ def IndexOfSafe(string, item):
 
         if not depth:
             if char == item:
-                    if char == "-" and index and string[index - 1] != "1":
-                        return index
-                    else:
-                        return index
+                if not (char == "-" and string[:index] in ['', '1']):
+                    return index
     return -1
 
 def HasOperators(string):
     return HasMath(string) or HasCompare(string)
 
 def HasMath(string):
-    return any([symbol in string for symbol in "+-*/"])
+    return any([symbol in string[1:-1] for symbol in "+-*/"])
 
 def HasCompare(string):
-    return any([symbol in string for symbol in "<>="])
+    return any([symbol in string[1:-1] for symbol in "<>="])
 
 # Returns a list where the first item is the destination that contains the result of the code, and the second item is the code.
 def CompileOperand_Partial(string, ext="", dst="", components=4):
@@ -710,17 +715,25 @@ def CompileOperand_Partial(string, ext="", dst="", components=4):
 
     for op in ops:
         if op[0] in string:
-            dex = IndexOfSafe(string, op[0])
-            if dex != -1:
+            dex = 0
+            while (dex := IndexOfSafe(string, op[0], dex)) != -1:
                 these = [item.strip() for item in [string[:dex], string[dex + 1:]]]
-                if isPixelShader and (op[0] == "-" and these[0] in ["", "1"]): continue
+                
+                if isPixelShader and (op[0] == "-" and these[0] in ["", "1"]):
+                    dex += 1
+                    continue
+
+                if not these[0]:
+                    dex += 1
+                    continue
                 
                 destination = dst
                 suffix = ""
 
                 sembly += op[1:] + ext + "\t" + destination + ", " + HVarNameToRegister(these[0].strip()) + ", " + HVarNameToRegister(these[1].strip(), linenum) + suffix + "\n"
                 mathed = True
-                break
+
+                dex += 1
 
     if not mathed:
         val = HVarNameToRegister(string)
