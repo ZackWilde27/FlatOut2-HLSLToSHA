@@ -1,5 +1,5 @@
 # Zack's HLSL to FlatOut SHA
-version = "v2.7.4"
+version = "v2.7.5"
 # Am I particularly proud of this code? uhh
 
 try:
@@ -137,7 +137,7 @@ def AddConstant(name, value, valtype="f", pack=True, swizzle=True):
     # Checking for pre-existing constant
     valstring = ",".join([StrToFloat(item) for item in vals])
     for hv in hvars + dhvars:
-        if hv.type and hv.value:
+        if hv.type and hv.value and hv.value not in ['texkill', 'texcoord']:
             if hv.type[0] == valtype:
                 existingvalues = ','.join([StrToFloat(item) for item in SliceWithStrings(hv.value, "(", ")").split(",")])
                 if valstring in existingvalues:
