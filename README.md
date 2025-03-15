@@ -1,7 +1,7 @@
-### I learned that you can put HLSL in the shader file
-I made a page explaining it [here](https://github.com/ZackWilde27/FlatOut2-HLSLToSHA/wiki/Putting-HLSL-in-the-shader-file)
+### The future of the compiler
+I found out that the game supports up to shader model 3, so now my recommendation is to write it [the conventional way](https://github.com/ZackWilde27/FlatOut2-HLSLToSHA/wiki/Putting-HLSL-in-the-shader-file). I'm considering a few options, like upgrading to 3.0 assembly, or making a new source-to-source compiler.
 
-I've tried to make my version the easier way to write shaders, but if you want standard HLSL, I just thought I'd mention it right off the bat.
+I want to keep the current version around, since shader model 1 is not officially supported by Microsoft anymore, and it might be possible to use it for other games.
 
 <br>
 
