@@ -241,6 +241,9 @@ The supported intrinsic functions are as follows:
 - lerp()
 - saturate()
 - mad()
+- normalize()*
+
+*This function uses a work-around that is multiple instructions long, so it's not as efficient as the other ones
 
 For example:
 ```hlsl
@@ -268,6 +271,8 @@ myVar = colour / 2;
 myVar = -colour;
 // The pixel shader can do 1-x for free
 myVar = 1-colour * 1-specular;
+// It can also do x - 0.5 and x - 0.5 * 2 for free
+myVar = mad(colour - 0.5 * 2, specular - 0.5, 1-dirt);
 ```
 
 When putting multiple math statements in a line, it does not follow the order of operations, it will perform each operation in the order you wrote it
@@ -332,7 +337,7 @@ float4 var2 = ? AMBIENT : SHADOW;
 //var2 = (var1.a > 0.5) ? AMBIENT : SHADOW;
 ```
 
-Now that the compiler uses ps_1_3, you can compare anything to 0 with the format ```x operator 0 ? y : z```
+If you're using ps_1_2 or ps_1_3, you can compare anything to 0 with the format ```x operator 0 ? y : z```
 
 Where ```operator``` can be >= or <
 ```hlsl
@@ -392,6 +397,9 @@ Define can create a substitution for some other text that gets replaced before t
 ```hlsl
 #define Tint(base, tintval) base * tintval
 
+// You can also change the pixel shader version with a definition
+#define ps_1_1
+
 #define function float4
 #define let float4
 #define std::cout return
@@ -421,6 +429,12 @@ float4 PixelShader(colour, specular)
     #else
         return thisVariable * specular;
     #endif
+
+    // ifdefs can now take a Python expression to calculate
+    #ifdef float(pixelshaderversion) > 1.1
+	// Newer feature
+    #else
+        // Workaround
 }
 ```
 
@@ -607,13 +621,17 @@ for i in myList
 
 The supported intrinsic functions are as follows:
 - abs()
+- ceil()*
 - clamp()*
+- cross()*
 - degrees()*
 - distance()*
 - dst()
 - dot()
 - exp2() (exp2_full() to use the accurate but expensive version)
+- faceforward()*
 - floor()*
+- fmod()*
 - frac()
 - length()*
 - lerp()*
@@ -626,9 +644,14 @@ The supported intrinsic functions are as follows:
 - radians()
 - reflect()*
 - rcp()
+- round()*
 - rsqrt()
+- saturate()*
+- sign()*
+- smoothstep()*
 - sqrt()*
 - step()
+- trunc()*
 
 *These functions use workarounds that are multiple instructions long, so they aren't as efficient as the other ones
 
@@ -698,12 +721,12 @@ float4 var3 = LocalToScreen(pos);
 If statements are possible, but extremely limited, and in a completely different way.
 ```hlsl
 float4 var1 = pos;
-float4 var2 = var1.x > pos.y ?;
-// It can be >, <, >=, or <=
+float4 var2 = var1.x >= pos.y ?;
+// It can be >=, or <
 
 // The values being returned here are 1.0 and 0.0,
 // So it's basically
-// var2 = (var1.x > pos.y) ? 1.0 : 0.0;
+// var2 = (var1.x >= pos.y) ? 1.0 : 0.0;
 ```
 
 <br>
