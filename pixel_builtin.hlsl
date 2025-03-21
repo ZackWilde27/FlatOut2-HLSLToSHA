@@ -9,6 +9,11 @@ float4 mad(a, b, c)
     }
 }
 
+float4 fma(a, b, c)
+{
+    return mad(a, b, c);
+}
+
 float4 lerp(x, y, float s)
 {
     asm {
@@ -19,7 +24,7 @@ float4 lerp(x, y, float s)
 float dot(x, y)
 {
     asm {
-        dp%tn0  %0, %1, %2
+        dp%tn1  %0, %1, %2
     }
 }
 

@@ -44,7 +44,7 @@ float exp2_full(float x)
 float frac(float x)
 {
     asm {
-        frac  %0, %1
+        frc  %0, %1
     }
 }
 
@@ -62,21 +62,21 @@ float4 min(x, y)
     }
 }
 
-float log2(x)
+float log2(float x)
 {
     asm {
         logp  %0, %1
     }
 }
 
-float log2_full(x)
+float log2_full(float x)
 {
     asm {
         log    %0, %1
     }
 }
 
-float rcp(x)
+float rcp(float x)
 {
     asm {
         rcp   %0, %1
@@ -88,6 +88,32 @@ float rsqrt(float x)
     asm {
         rsq   %0, %1
     }
+}
+
+float4 dst(float4 x, float4 y)
+{
+    asm {
+        dst   %0, %1, %2
+    }
+}
+
+float abs(float x)
+{
+    asm {
+        max   %0, %1, -%1
+    }
+}
+
+float step(float y, float x)
+{
+    asm {
+        sge   %0, %2, %1
+    }
+}
+
+float radians(float x)
+{
+    return x * 0.0174533f;
 }
 
 // '%z' is just like %0, except it indicates you will read from it later, so if the destination is write-only, a new register is allocated instead.
@@ -110,32 +136,12 @@ float distance(float3 x, float3 y)
     }
 }
 
-float4 dst(float4 x, float4 y)
-{
-    asm {
-        dst   %0, %1, %2
-    }
-}
-
-float abs(float x)
-{
-    asm {
-        max   %0, %1, -%1
-    }
-}
-
+// Calculated as x / 0.0174533f
 float degrees(float x)
 {
     asm {
         rcp %z.x, c95.x
         mul %0, %z.x, %1
-    }
-}
-
-float step(float x)
-{
-    asm {
-        sge   %0, %1, %2
     }
 }
 
@@ -172,13 +178,6 @@ float round(float x)
         sub %z.y, %1, %z.x
         sge %z.z, %z.x, c95.z
         add %0, %z.y, %z.z
-    }
-}
-
-float radians(float x)
-{
-    asm {
-        mul   %0, c95.x, %1
     }
 }
 
@@ -239,7 +238,7 @@ float3 reflect(float3 i, float3 n)
     }
 }
 
-
+// Calculated as v / length(v)
 float3 normalize(float v)
 {
     asm {
@@ -259,7 +258,7 @@ float4 lerp(x, y, float s)
 }
 
 
-
+// Calculated as sqrt(dot(value, value))
 float length(float3 value)
 {
     asm {
@@ -269,7 +268,7 @@ float length(float3 value)
     }
 }
 
-float clamp()
+float clamp(float x, float min, float max)
 {
     asm {
         min %z, %1, %3
@@ -318,14 +317,18 @@ float3 cross(float3 x, float3 y)
 ////////////////////////////
 
 // With this you can force it to do a dp3 or dp4 instruction with any input
-float dot3(float4 x, float4 y)
+float dot3(x, y)
 {
-    asm { dp3   %0, %1, %2 }
+    asm {
+        dp3   %0, %1, %2
+    }
 }
 
-float dot4(float4 x, float4 y)
+float dot4(x, y)
 {
-    asm { dp4   %0, %1, %2 }
+    asm {
+        dp4   %0, %1, %2
+    }
 }
 
 // Returns 1/distance(x, y), so you can '* rdistance()' instead of '/ distance()' for the most efficiency
@@ -334,7 +337,7 @@ float rdistance(float3 x, float3 y)
     asm {
         sub %z, %1, %2
         dp3 %z.w, %z, %z
-        rsq %z.w, %z.w
+        rsq %0, %z.w
     }
 }
 
@@ -347,8 +350,8 @@ float rlength(float3 value)
     }
 }
 
-// I turned the fresnel into an intrinsic function
-// Calculated as pow(1-abs(dot(incident, normal)), 4)
+// I turned the original fresnel equation into an intrinsic function
+// Calculated as pow(1-abs(dot(incident, normal)), around 4 I think)
 float fresnel(float3 incident, float3 normal)
 {
     asm {
