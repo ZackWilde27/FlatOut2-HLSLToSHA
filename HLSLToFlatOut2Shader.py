@@ -1,5 +1,5 @@
 # Zack's HLSL to FlatOut SHA
-version = "v2.7.5"
+version = "v2.8"
 # Am I particularly proud of this code? uhh
 
 try:
@@ -19,7 +19,14 @@ is24Hour = False
 isPixelShader = True
 noOptimizations = False
 includeComments = True
+
+# Whether to put constants in the pass, or use def instructions. For FlatOut it should be set to True, but other games might not work like that.
+constantsInPass = True 
+
+# You can change how many constants are reserved by the game, since it can vary from shader to shader
 vertexConstants = 32
+pixelConstants = 3
+
 dateFormat = "M/D/Y" # D will be replaced with the day, M with the month, and so on
 
 class HVar:
@@ -58,10 +65,13 @@ class HStruct:
     def __str__(self):
         return "HStruct: " + self.name
 
+# Functions can specify which pixel/vertex shader versions they work in, so it'll ignore functions that are unsupported or meant for an older version.
 class HFunc:
-    def __init__(self, name, code):
+    def __init__(self, name, code, minversion=1.1, maxversion=1.3):
         self.name = name
         self.code = code
+        self.minver = minversion
+        self.maxver = maxversion
 
     def __eq__(self, other):
         return self.name == other
@@ -100,7 +110,8 @@ def PSTexToVSTex():
 
 def ResetAVars(isPS=isPixelShader):
     global hfuncs
-    hfuncs = [HFunc("dot", "dp%tn1\t%0, %1, %2"), HFunc("lerp", "lrp\t%0, %3, %2, %1"), HFunc("mad", "mad\t%0, %1, %2, %3")] if isPS else [HFunc("dot", "dp%tn1\t%0, %1, %2"), HFunc("dot3", "dp3\t%0, %1, %2"), HFunc("dot4", "dp4\t%0, %1, %2"), HFunc("mad", "mad\t%0, %1, %2, %3"), HFunc("exp2", "expp\t%0, %1"), HFunc("exp2_full", "exp\t%0, %1"), HFunc("frac", "frc\t%0, %1"), HFunc("max", "max\t%0, %1, %2"), HFunc("min", "min\t%0, %1, %2"), HFunc("log2", "logp\t%0, %1"), HFunc("log2_full", "log\t%0, %1"), HFunc("rcp", "rcp\t%0, %1"), HFunc("rsqrt", "rsq\t%0, %1"), HFunc("rdistance", "sub\t%z, %1, %2\ndp3\t%z.w, %z, %z\nrsq\t%z.w, %z.w"), HFunc("distance", "sub\t%z, %1, %2\ndp3\t%z.w, %z, %z\nrsq\t%z.w, %z.w\nrcp\t%0, %z.w"), HFunc("dst", "dst\t%0, %1"), HFunc("abs", "max\t%0, %1, -%1"), HFunc("degrees", "rcp\t%z.x, c95.x\nmul\t%0, %z.x, %1"), HFunc("step", "sge\t%0, %1, %2"), HFunc("floor", "frc\t%z.w, %1\nsub\t%0, %1, %z.w"), HFunc("radians", "mul\t%0, c95.x, %1"), HFunc("lit", "mov\t%z.x, %1\nmov\t%z.y, %2\nmov\t%z.w, %3\nlit\t%0, %z"), HFunc("fresnel", "dp3\t%z.x, %1, %2\nmax\t%z.x, -%z.x, %z.x\nsub\t%z.x, c95.y, %z.x\nmul\t%z.x, %z.x, %z.x\nmul\t%z.x, %z.x, %z.x\nmul\t%0, %z.x, %z.x"), HFunc("reflect", "dp3\t%z.x, %1, %2\nadd\t%z.x, %z.x, %z.x\nmul\t%z, %z.x, %2\nsub\t%0, %1, %z"), HFunc("normalize", "dp3\t%z.a, %1, %1\nrsq\t%z.a, %z.a\nmul\t%0, %1, %z.a"), HFunc("lerp", "sub\t%z, %2, %1\nmad\t%0, %z, %3, %1"), HFunc("rlength", "dp3\t%z, %1, %1\nrsq\t%z, %z"), HFunc("length", "dp3\t%z.a, %1, %1\nrsq\t%z.a, %z.a\nrcp\t%0, %z.a"), HFunc("clamp", "min\t%z, %1, %3\nmax\t%0, %z, %2"), HFunc("sqrt", "rsq\t%z, %1\nrcp\t%0, %z"), HFunc("RotateToWorld", "m3x%tn0\t%0, %1, c4"), HFunc("LocalToWorld", "m4x%tn0\t%0, %1, c4"), HFunc("LocalToScreen", "m4x%tn0\t%0, %1, c0"), HFunc("mul", "m%tn2x%tn0\t%0, %1, %2")]
+    hfuncs = []
+    #hfuncs = [HFunc("dot", "dp%tn1\t%0, %1, %2", 1.2), HFunc("dot", "dp3\t%0, %1, %2", 1.1, 1.1), HFunc("lerp", "lrp\t%0, %3, %2, %1"), HFunc("mad", "mad\t%0, %1, %2, %3"), HFunc("fma", "mad\t%0, %1, %2, %3"), HFunc("normalize", "dp3_sat\t%z, %1_bx2, %1_bx2\nmad\t%0, %1_bias, 1-%z, %1_bx2")] if isPS else [HFunc("dot", "dp%tn1\t%0, %1, %2"), HFunc("dot3", "dp3\t%0, %1, %2"), HFunc("dot4", "dp4\t%0, %1, %2"), HFunc("mad", "mad\t%0, %1, %2, %3"), HFunc("fma", "mad\t%0, %1, %2, %3"), HFunc("exp2", "expp\t%0, %1"), HFunc("exp2_full", "exp\t%0, %1"), HFunc("frac", "frc\t%0, %1"), HFunc("max", "max\t%0, %1, %2"), HFunc("min", "min\t%0, %1, %2"), HFunc("log2", "logp\t%0, %1"), HFunc("log2_full", "log\t%0, %1"), HFunc("rcp", "rcp\t%0, %1"), HFunc("rsqrt", "rsq\t%0, %1"), HFunc("rdistance", "sub\t%z, %1, %2\ndp3\t%z.w, %z, %z\nrsq\t%z.w, %z.w"), HFunc("distance", "sub\t%z, %1, %2\ndp3\t%z.w, %z, %z\nrsq\t%z.w, %z.w\nrcp\t%0, %z.w"), HFunc("dst", "dst\t%0, %1"), HFunc("abs", "max\t%0, %1, -%1"), HFunc("degrees", "rcp\t%z.x, c95.x\nmul\t%0, %z.x, %1"), HFunc("step", "sge\t%0, %1, %2"), HFunc("floor", "frc\t%z.w, %1\nsub\t%0, %1, %z.w"), HFunc("trunc", "frc\t%z.w, %1\nsub\t%0, %1, %z.w"), HFunc("ceil", "frc\t%z.x, %1\nsub\t%z.x, %1, %z.x\nadd\t%0, %z.x, c95.y"), HFunc("round", "frc\t%z.x, %1\nsub\t%z.y, %1, %z.x\nslt\t%z.z, c95.z, %z.x\nadd\t%0, %z.y, %z.z"), HFunc("radians", "mul\t%0, c95.x, %1"), HFunc("lit", "mov\t%z.x, %1\nmov\t%z.y, %2\nmov\t%z.w, %3\nlit\t%0, %z"), HFunc("sign", "slt\t%z.x, c95.w, r0.x\nsub\t%z.x, %z.x, c95.z\nadd\t%0, %z.x, %z.x"), HFunc("fmod", "rcp\t%z.x, %2\nmul\t%z.x, %z.x, %1\nfrc\t%z.y, %z.x\nsub\t%z.x, %z.x, %z.y\nmul\t%z.x, %z.x, %2\nsub\t%0, %1, %z.x"), HFunc("faceforward", "dp3\t%z.x, %2, %3\nslt\t%z.x, c95.w, %z.x\nsub\t%z.x, %z.x, c95.z\nadd\t%z.x, %z.x, %z.x\nmul\t%0, -%1, %z.x"), HFunc("fresnel", "dp3\t%z.x, %1, %2\nmax\t%z.x, -%z.x, %z.x\nsub\t%z.x, c95.y, %z.x\nmul\t%z.x, %z.x, %z.x\nmul\t%z.x, %z.x, %z.x\nmul\t%0, %z.x, %z.x"), HFunc("reflect", "dp3\t%z.x, %1, %2\nadd\t%z.x, %z.x, %z.x\nmul\t%z, %z.x, %2\nsub\t%0, %1, %z"), HFunc("normalize", "dp3\t%z.a, %1, %1\nrsq\t%z.a, %z.a\nmul\t%0, %1, %z.a"), HFunc("lerp", "sub\t%z, %2, %1\nmad\t%0, %z, %3, %1"), HFunc("rlength", "dp3\t%z, %1, %1\nrsq\t%z, %z"), HFunc("length", "dp3\t%z.a, %1, %1\nrsq\t%z.a, %z.a\nrcp\t%0, %z.a"), HFunc("clamp", "min\t%z, %1, %3\nmax\t%0, %z, %2"), HFunc("saturate", "min\t%z, %1, c95.y\nmax\t%0, %z, c95.w"), HFunc("sqrt", "rsq\t%z, %1\nrcp\t%0, %z"), HFunc("RotateToWorld", "m3x%tn0\t%0, %1, c4"), HFunc("LocalToWorld", "m4x%tn0\t%0, %1, c4"), HFunc("LocalToScreen", "m4x%tn0\t%0, %1, c0"), HFunc("mul", "m%tn2x%tn0\t%0, %1, %2")]
 
 # Finds the item in list1 and retrieves the corrosponding item in list2
 def Translate(list1, list2, item):
@@ -277,6 +288,23 @@ def BreakdownMath(line):
 
     if isPixelShader:
         i = 0
+
+        while True:
+            try:
+                i = tokes.index("-", i)
+            except ValueError:
+                break
+
+            if i and i < len(tokes):
+                if IsConst(tokes[i + 1]) and StrToFloat(tokes[i + 1]) == "0.5f":
+                    if (i < len(tokes) - 2) and tokes[i + 2] == "*" and IsConst(tokes[i + 3]) and StrToFloat(tokes[i + 3]) == "2.0f":
+                        tokes = tokes[:i - 1] + ["\"" + HVarNameToRegister(tokes[i - 1]) + "_bx2\""] + tokes[i + 4:]
+                    else:
+                        tokes = tokes[:i - 1] + ["\"" + HVarNameToRegister(tokes[i - 1]) + "_bias\""] + tokes[i + 2:]
+            i += 1
+
+        i = 0
+        
         while True:
             try:
                 i = tokes.index("*", i)
@@ -288,6 +316,8 @@ def BreakdownMath(line):
                 tokes = tokes[:i] + tokes[i + 2:]
 
             i += 1
+
+
 
     i = 0
     allConst = True
@@ -388,8 +418,13 @@ def HVarNameToRegister(name, swizzle=True):
             if not exptype:
                 exptype = hv.type
 
+            
+
             if (hv.offset or int(exptype[1]) != 4) and (not ext) and ("." not in hv.register) and (not isPixelShader) and swizzle:
                 ext = "." + "xyzw"[:int(exptype[1])]
+
+            if hv.register[0] == "v":
+                ext = ""
 
             register = hv.register
             if "." in register:
@@ -480,16 +515,22 @@ def GetParEnd(string, index, par="()"):
         index += 1
     return index
 
+def InFunction():
+    return scope not in ['PixelShader', 'VertexShader', 'global']
+
 # Returns the first unused register
 # The offset allows for multiple unused registers to be allocated
 def AllocateRegister(offset=0):
-    try:
-        if (rStatus.index(False) + offset) > len(rStatus):
-            raise ValueError("Not enough registers to allocate")
-        return "r" + str(rStatus.index(False) + offset)
-    except ValueError:
-        Error("Ran out of registers to hold results, too much is being done in a single line")
-        return "r" + str(len(rStatus) - 1)
+    if InFunction():
+        return "%z" + str(offset)
+    else:
+        try:
+            if (rStatus.index(False) + offset) > len(rStatus):
+                raise ValueError("Not enough registers to allocate")
+            return "r" + str(rStatus.index(False) + offset)
+        except ValueError:
+            Error("Ran out of registers to hold results, too much is being done in a single line")
+            return "r" + str(len(rStatus) - 1)
 
 def GetOperands(string, dex):
     s = string.find(" ", dex)
@@ -538,6 +579,7 @@ def CompileOperand(string, ext="", dst="", components=4):
                 
             if "[" in tokens[i]:
                 index = tokens[i][tokens[i].index("[") + 1:tokens[i].index("]")].strip()
+                swizzle = tokens[i][tokens[i].index("]") + 1:]
                 if any([(char in index) for char in "*+-/("]):
                     that = CompileOperand_Partial(index, "", AllocateRegister(unusedRegisters) + ".x", 1)
                     unusedRegisters += 1
@@ -545,7 +587,7 @@ def CompileOperand(string, ext="", dst="", components=4):
                     fullsembly += "mov" + ext + "\ta0.x, " + that[0] + "\n" 
                 else:
                     fullsembly += CompileOperand_Partial(index, "", "a0.x", 1)[1]
-                tokens[i] = "\"c[a0.x + " + HVarNameToRegister(tokens[i][:tokens[i].index("[")].strip())[1:] + "]\""
+                tokens[i] = "\"c[a0.x + " + HVarNameToRegister(tokens[i][:tokens[i].index("[")].strip())[1:] + "]" + swizzle + "\""
 
         destination = dst
         if (dst[0] != "r" and len(tokens) > 3):
@@ -609,6 +651,9 @@ def HasMath(string):
 def HasCompare(string):
     return any([symbol in string[1:-1] for symbol in "<>="])
 
+def IsASingleMov(string):
+    return string[:len("mov\t")] == "mov\t" and string.count("\n") == 1
+
 # Returns a list where the first item is the destination that contains the result of the code, and the second item is the code.
 def CompileOperand_Partial(string, ext="", dst="", components=4):
     string = string.strip()
@@ -621,97 +666,117 @@ def CompileOperand_Partial(string, ext="", dst="", components=4):
         dst = AllocateRegister(reg)
         reg += 1
 
-    CompilePartial = CompileOperand_PartialPS if isPixelShader else CompileOperand_PartialVS
+    GetSecondOpinion = CompileOperand_PartialPS if isPixelShader else CompileOperand_PartialVS
     
-    secondOpinion = CompilePartial(string, ext, dst, components)
+    secondOpinion = GetSecondOpinion(string, ext, dst, components)
     
     if secondOpinion:
         return secondOpinion
 
+    if string[0] == "(" and string[-1] == ")":
+        if HasMath(string):
+            return [dst, CompileOperand(string[1:-1], ext, AllocateRegister(reg), 4)[1]]
+        else:
+            string = string[1:-1]
+
     if "(" in string:
-        if string[0] == "(" and string[-1] == ")":
-            if HasMath(string):
-                return [dst, CompileOperand(string[1:-1], ext, AllocateRegister(reg), 4)[1]]
-            else:
-                string = string[1:-1]
+            for av in hfuncs:
+                if not (av.minver <= float(pixelshaderversion) <= av.maxver):
+                    continue
 
-        for av in hfuncs:
-            if string[:string.index("(")].strip() == av.name:
-                dex = string.index(av.name + "(") + len(av.name) + 1
-                end = GetParEnd(string, dex)
-                inner = [item.strip() for item in ArraySplit(string[dex:end])]
-                end = av.code
+                if string[:string.index("(")].strip() == av.name:
+                    dex = string.index(av.name + "(") + len(av.name) + 1
+                    end = GetParEnd(string, dex)
+                    inner = [item.strip() for item in ArraySplit(string[dex:end])]
+                    end = av.code
 
-                # When calling a function that reads from the destination, it checks if you gave it a write-only register and will use an unused variable register if that's the case.
-                if ("%z" in end and dst[0] != 'r') or "%z." in end:
-                    newDst = "r" + str(rStatus.index(False) + reg)
-                    end = end.replace("%z", newDst)
-                else:
-                    end = end.replace("%z", dst)
+                    i = 0
+                    while "%z" + str(i) in end:
+                        end = end.replace("%z" + str(i), AllocateRegister(reg))
+                        reg += 1
+                        i += 1
 
-                end = end.replace("%0", dst)
-
-                if len(end.split("\t")) > 2:
-                    end = end[:end.rfind("\t")] + ext + "\t" + end[end.rfind("\t") + 1:]
-                else:
-                    end = end.replace("\t", ext + "\t")
-                    
-                end = end.replace("%tn0", str(components) if "." not in dst else str(len(dst[dst.index(".") + 1:])))
-
-                prepend = ""
-                for dex, item in enumerate(inner):
-
-                    if not item: continue
-
-                    if any([IndexOfSafe(item, char) != -1 for char in "+-*/"] + ["(" in item]):
-                            if not (item == "-" and inner[dex - 1] == "1"):
-                                that = CompileOperand(item, ext, AllocateRegister(reg), components)
-                                reg += 1
-                                prepend += that[1]
-                                inner[dex] = "\"" + that[0] + "\""
-                                item = "\"" + that[0] + "\""
-
-                    if item[0] in "0123456789":
-                        if item[:2] != "1-":
-                            item = "\"" + AddConstant("constant_" + str(constants), item, "f" if item[-1] == "f" else "i") + "\""
-
-                    if "." in item:
-                        item = item.split(".")
-                        item.append(len(item[1]))
+                    # When calling a function that reads from the destination, it checks if you gave it a write-only register and will use an unused variable register if that's the case.
+                    if ("%z" in end and dst[0] != 'r') or "%z." in end:
+                        newDst = "r" + str(rStatus.index(False) + reg)
+                        reg += 1
+                        end = end.replace("%z", newDst)
                     else:
-                        hvar = HVarNameToVar(item)
-                        if hvar and not (isPixelShader) and (hvar.offset or hvar.type[1] != "4"):
-                            item = [item, "xyzw"[hvar.offset:hvar.offset + int(hvar.type[1])], int(hvar.type[1])]
-                        else:
-                            item = [item, ""]
+                        end = end.replace("%z", dst)
+
+
+
+                    end = end.replace("%0", dst)
+
+                    if len(end.split("\t")) > 2:
+                        end = end[:end.rfind("\t")] + ext + "\t" + end[end.rfind("\t") + 1:]
+                    else:
+                        end = end.replace("\t", ext + "\t")
                         
-                        if item[0] in hvars:
-                            item[-1] = hvars[hvars.index(item[0])].type[1:]
-                        elif item[0] in dhvars:
-                            item[-1] = dhvars[dhvars.index(item[0])].type[1:]
+                    end = end.replace("%tn0", str(components) if "." not in dst else str(len(dst[dst.index(".") + 1:])))
+
+                    prepend = ""
+                    for dex, item in enumerate(inner):
+
+                        if not item: continue
+
+                        if any([IndexOfSafe(item, char) != -1 for char in "+-*/"] + ["(" in item]):
+                                if not (item == "-" and inner[dex - 1] == "1"):
+                                    that = CompileOperand(item, ext, AllocateRegister(reg), components)
+                                    if IsASingleMov(that[1]):
+                                        item = "\"" + that[1][that[1].index(",") + 2:-1] + "\""
+                                        inner[dex] = item
+                                    else:
+                                        reg += 1
+                                        prepend += that[1]
+                                        
+                                        item = "\"" + that[0] + "\""
+                                        inner[dex] = item
+
+                        if item[0] in "0123456789":
+                            if item[:2] != "1-":
+                                item = "\"" + AddConstant("constant_" + str(constants), item, "f" if item[-1] == "f" else "i") + "\""
+
+                        if "." in item:
+                            item = item.split(".")
+                            item.append(len(item[1]))
                         else:
-                            if not isPixelShader:
-                                item[-1] = "m4" if (item[0] == "c0") else "m3" if (item[0] == "c4") else "4"
+                            hvar = HVarNameToVar(item)
+                            if hvar and not (isPixelShader) and (hvar.offset or hvar.type[1] != "4"):
+                                item = [item, "xyzw"[hvar.offset:hvar.offset + int(hvar.type[1])], int(hvar.type[1])]
                             else:
-                                item[-1] = "4"
+                                item = [item, ""]
+                            
+                            if item[0] in hvars:
+                                item[-1] = hvars[hvars.index(item[0])].type[1:]
+                            elif item[0] in dhvars:
+                                item[-1] = dhvars[dhvars.index(item[0])].type[1:]
+                            else:
+                                if not isPixelShader:
+                                    item[-1] = "m4" if (item[0] == "c0") else "m3" if (item[0] == "c4") else "4"
+                                else:
+                                    item[-1] = "4"
 
-                    end = end.replace("%tn" + str(dex + 1), str(item[-1]))
+                        end = end.replace("%tn" + str(dex + 1), str(item[-1]))
 
-                    name = '.'.join(item[:-1]).strip()
-                    hv = HVarNameToVar(name)
-                    if hv:
-                        # I don't know much about regular expressions
-                        matches = findall("%" + str(dex + 1) + "\\.[xyzwrgba]+", end)
-                        for m in matches:
-                            end = end.replace(m, hv.register + OffsetProperty(m[m.index("."):], hv.offset))
-                        register = hv.register
-                    else:
-                        register = HVarNameToRegister(name)
-                        if "." in register:
-                            end = end.replace("%" + str(dex + 1) + ".", register[:register.index(".") + 1])
-                    end = end.replace("%" + str(dex + 1), register)
+                        name = '.'.join(item[:-1]).strip()
+                        hv = HVarNameToVar(name)
 
-                return [dst, prepend + end + "\n"]
+                        if hv:
+                            # I don't know much about regular expressions
+                            matches = findall("%" + str(dex + 1) + "\\.[xyzwrgba]+", end)
+                            for m in matches:
+                                end = end.replace(m, hv.register + OffsetProperty(m[m.index("."):], hv.offset))
+                            register = hv.register
+                        else:
+                            
+                            register = HVarNameToRegister(name)
+                            if "." in register:
+                                end = end.replace("%" + str(dex + 1) + ".", register[:register.index(".") + 1])
+                            
+                        end = end.replace("%" + str(dex + 1), register)
+
+                    return [dst, prepend + end + "\n"]
 
     for op in ops:
         if op[0] in string:
@@ -762,27 +827,28 @@ def CompileOperand_PartialPS(string, ext="", dst="", components=4):
     if "?" in string:
         symbols = [">=", "<"]
         symbolMeanings = [", %0, %1", ", %1, %0"]
-        for dex, symbol in enumerate(symbols):
-            if symbol in string:
-                splt = string[:string.index("?")].strip()
-                if splt[0] == "(" and splt[-1] == ")":
-                    splt = splt[1:-1]
+        if float(pixelshaderversion) > 1.1:
+            for dex, symbol in enumerate(symbols):
+                if symbol in string:
+                    splt = string[:string.index("?")].strip()
+                    if splt[0] == "(" and splt[-1] == ")":
+                        splt = splt[1:-1]
 
-                splt = [item.strip() for item in splt.split(symbol)]
+                    splt = [item.strip() for item in splt.split(symbol)]
 
-                flip = False
-                if all([(not char.isalpha()) for char in splt[0]]):
-                    flip = float(splt[0]) == 0.0
+                    flip = False
+                    if all([(not char.isalpha()) for char in splt[0]]):
+                        flip = float(splt[0]) == 0.0
 
-                src0 = splt[1] if flip else splt[0]
+                    src0 = splt[1] if flip else splt[0]
 
-                if flip: dex = int(not bool(dex))
+                    if flip: dex = int(not bool(dex))
 
-                values = [item.strip() for item in string[string.index("?") + 1:].split(":")]
+                    values = [item.strip() for item in string[string.index("?") + 1:].split(":")]
 
-                values = ConstantsToRegisters(values)
+                    values = ConstantsToRegisters(values)
 
-                return [dst, "cmp" + ext + "\t" + ", ".join([dst, HVarNameToRegister(src0)]) + symbolMeanings[dex].replace("%0", HVarNameToRegister(values[0])).replace("%1", HVarNameToRegister(values[1])) + "\n"]
+                    return [dst, "cmp" + ext + "\t" + ", ".join([dst, HVarNameToRegister(src0)]) + symbolMeanings[dex].replace("%0", HVarNameToRegister(values[0])).replace("%1", HVarNameToRegister(values[1])) + "\n"]
 
         dex = string.index("?") + 1
         inner = [item.strip() for item in string[dex:].split(":")]
@@ -878,6 +944,10 @@ def SecondPass(script):
 
     # Turning multiplies and adds into mads
     while (mdex := script.find("mul", dex)) != -1:
+        
+        if "\n" not in script[mdex:]:
+            break
+
         tdex = script.index("\n", mdex)
         muls = script[mdex + 4:tdex].split(",")
         muls = [item.strip() for item in muls]
@@ -937,7 +1007,7 @@ def HandleAssign(line):
     for symb in ["*=", "+=", "-="]:
         if symb in line:
             splt = [item.strip() for item in line.split(symb)]
-            return splt[0] + " = " + splt[0] + " " + symb[0] + " " + splt[1]
+            return splt[0] + " = " + splt[0] + " " + symb[0] + " (" + splt[1] + ")"
     return line
 
 def HandleForLoop(code, start, condition, inc, name, keyword, ssemblystart):
@@ -1235,11 +1305,14 @@ def CompileHLSL(script, localVars=-1, dst="r0", inGlobal=0):
                                     r = CompileOperand(tokens[2], "", "", (1 if tokens[0] in ['float', 'int', 'bool'] else int(tokens[0][-1])))
                                     hvars.append(HVar(tokens[1], r[0], "", tokens[0][0] + ("1" if tokens[0] in ['float', 'int', 'bool'] else tokens[0][-1])))
                                     output += ("+" if bMeanwhile else "") + r[1]
-                                    rStatus[int(r[0].replace("\"", "")[1])] = True
-
                                 elif len(tokens) == 2:
                                     hvars.append(HVar(tokens[1], AllocateRegister(), "", tokens[0][0] + ("1" if tokens[0] in ['float', 'int', 'bool'] else tokens[0][-1])))
-                                    rStatus[int(hvars[-1].register.replace("\"", "")[1:])] = True
+                                    
+                                if not InFunction():
+                                    r = hvars[-1].register
+                                    if "." in r:
+                                        r = r[:r.index(".")]
+                                    rStatus[int(r.replace("\"", "")[1:])] = True
 
                 else:
                     tokens = line.split(" ")
@@ -1491,7 +1564,11 @@ def HandleIfDef(hlsl, index, bNot):
     if "#else" in smallSection:
         options = [smallSection[smallSection.index("#else") + len("#else"):], smallSection[:smallSection.index("#else")]]
 
-    exists = IsDefined(toCheck)
+    if HasOperators(toCheck) or (toCheck[0] == "(" and toCheck[-1] == ")"):
+        exists = eval(toCheck)
+    else:
+        exists = IsDefined(toCheck)
+
     if bNot:
         exists = not exists
     
@@ -1523,6 +1600,7 @@ while stuckInLoop:
             sleep(0.5)
             compiledpixelshader = ""
             compiledvertexshader = ""
+            pixelshaderversion = "1.3"
             with open(filename) as file:
                 hlsl = file.read()
                 [HandleDefines(line) for line in hlsl.split("\n")]
@@ -1531,6 +1609,10 @@ while stuckInLoop:
                 while (ifdef := hlsl.find("#ifndef ")) != -1:
                     hlsl = HandleIfDef(hlsl, ifdef, True)
 
+                for v in ["1_3", "1_2", "1_1"]:
+                    if IsDefined("ps_" + v):
+                        pixelshaderversion = v.replace("_", ".") # Not only does this pre-calculate the instruction to use, but it can then be converted to a float to compare versions easily
+                        break
                 
                 firstshaderindex = [hlsl.index("PixelShader"), hlsl.index("VertexShader")]
                 lastshaderindex = max(firstshaderindex)
@@ -1555,6 +1637,8 @@ while stuckInLoop:
 
             (inputs, pixelshader, psLine) = GetShader(hlsl, True)
             if pixelshader:
+
+                
                 
                 if not inputs[0].strip():
                     textures = 0
@@ -1614,6 +1698,8 @@ while stuckInLoop:
             decl = "\t\tstream 0;\n" + "\n".join(decl) + "\n"
 
             passbuffer = ""
+            defconstantbuffer = ""
+            vertdefconstantbuffer = ""
 
             if createFullFile:
                 with open(newfilename, "w") as sfile:
@@ -1657,6 +1743,8 @@ while stuckInLoop:
                         constants = 3
                         startC = 3
                         script = pixelshader
+                        with open("pixel_builtin.hlsl") as file:
+                            CompileHLSL(file.read())
                         compiledpixelshader = CompileHLSL(pixelshader, -1, "r0", 2)
                         seenconstants = [False for i in range(maxC)]
                         for hvar in hvars:
@@ -1667,7 +1755,10 @@ while stuckInLoop:
                                         reg = reg[:reg.index(".")]
                                     if not hvar.offset or not seenconstants[int(reg[1:])]:
                                         seenconstants[int(reg[1:])] = True
-                                        passbuffer += "\t\tPixelShaderConstant" + hvar.type[0].upper() + "[" + hvar.register[1] + "] = " + hvar.value + ";\n"
+                                        if constantsInPass:
+                                            passbuffer += "\t\tPixelShaderConstant" + hvar.type[0].upper() + "[" + hvar.register[1] + "] = " + hvar.value + ";\n"
+                                        else:
+                                            defconstantbuffer += "\t\tdef\t" + (hvar.register[:hvar.register.index(".")] if "." in hvar.register else hvar.register) + ", " + SliceWithStrings(hvar.value, "(", ")").replace("%x", "0") + "\n"
 
                         if textures:
                             compiledpixelshader = "\n" + compiledpixelshader
@@ -1678,6 +1769,11 @@ while stuckInLoop:
                                 else:
                                     prefix = "tex"
                                 compiledpixelshader = prefix + "\tt" + str(i) + "\t// " + hv.name + "\n" + compiledpixelshader
+
+                    passbuffer = "\n" + passbuffer
+
+                    
+
                     
                     if vertexshader != "":
                         scope = "Vertex Shader"
@@ -1697,32 +1793,43 @@ while stuckInLoop:
                         hvars = [HVar("reservedconstant_95", "c95", "float4(0.0174533f, 1.0f, 0.5f, 0.0f)", "f4")]
                         fvars = []
                         rStatus = [False for i in range(maxR)]
-                        sfile.write(MakeDcls() + "\n")
+                        
                         script = vertexshader
+
+                        with open("vertex_builtin.hlsl") as file:
+                            CompileHLSL(file.read())
+
                         compiledvertexshader = CompileHLSL(vertexshader, -1, "oPos", 2)
+                        seenconstants = [False for i in range(maxC)]
+                        for hvar in hvars:
+                            reg = hvar.register
+                            if reg[0] == 'c':
+                                if "." in reg:
+                                    reg = reg[:reg.index(".")]
+                                if (not seenconstants[int(reg[1:])] or not hvar.offset) and hvar.value:
+                                    seenconstants[int(reg[1:])] = True
+                                    if constantsInPass:
+                                        passbuffer = "\t\tVertexShaderConstant" + hvar.type[0].upper() + "[" + (hvar.register[1:hvar.register.index(".")] if "." in hvar.register else hvar.register[1:]) + "] = " + hvar.value + ";\n" + passbuffer
+                                    else:
+                                        vertdefconstantbuffer += "\t\tdef\t" + (hvar.register[:hvar.register.index(".")] if "." in hvar.register else hvar.register) + ", " + SliceWithStrings(hvar.value, "(", ")").replace("%x", "0") + "\n"
+
+                        if vertdefconstantbuffer:
+                            vertdefconstantbuffer += "\n"
+                            
+                        sfile.write(vertdefconstantbuffer)
+                        sfile.write(MakeDcls() + "\n")
                         sfile.write(AddTabs(compiledvertexshader, "\t\t"))
 
                     sfile.write("\t};\n\n")
 
-                    passbuffer = "\n" + passbuffer
-
-                    seenconstants = [False for i in range(maxC)]
-                    for hvar in hvars:
-                        reg = hvar.register
-                        if reg[0] == 'c':
-                            if "." in reg:
-                                reg = reg[:reg.index(".")]
-                            if (not seenconstants[int(reg[1:])] or not hvar.offset) and hvar.value:
-                                seenconstants[int(reg[1:])] = True
-                                passbuffer = "\t\tVertexShaderConstant" + hvar.type[0].upper() + "[" + (hvar.register[1:hvar.register.index(".")] if "." in hvar.register else hvar.register[1:]) + "] = " + hvar.value + ";\n" + passbuffer
-
-                    
-
                     if pixelshader != "":
                         hvars = [item for item in psSnapshot]
                         sfile.write("pixelshader pSdr =\n\tasm\n\t{\n")
-                        sfile.write("\t\tps.1.3\n")
+                        sfile.write(f"\t\tps.{pixelshaderversion}\n")
                         sfile.write("\n")
+                        if defconstantbuffer:
+                            defconstantbuffer += "\n"
+                        sfile.write(defconstantbuffer)
                         sfile.write(AddTabs(compiledpixelshader, "\t\t"))
                         sfile.write("\t};\n\n")
 
