@@ -306,7 +306,7 @@ float3 cross(float3 x, float3 y)
 {
     asm {
         mul	%z, %1.yzx, %2.zxy
-	    mul	%z0, %1.zxy, %2.yzx
+	mul	%z0, %1.zxy, %2.yzx
         sub	%0, %z, %z0
     }
 }
