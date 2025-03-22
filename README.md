@@ -238,10 +238,11 @@ Reserved constants and other registers can be accessed with keywords
 
 The supported intrinsic functions are as follows:
 - dot()
+- fma()
 - lerp()
-- saturate()
 - mad()
 - normalize()*
+- saturate()
 
 *This function uses a work-around that is multiple instructions long, so it's not as efficient as the other ones
 
