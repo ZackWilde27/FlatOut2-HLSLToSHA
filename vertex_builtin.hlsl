@@ -11,14 +11,14 @@
 float dot(x, y)
 {
     asm {
-        dp%tn1  %0, %1, %2
+        dp%tn1	%0, %1, %2
     }
 }
 
 float4 mad(a, b, c)
 {
     asm {
-        mad %0, %1, %2, %3
+        mad	%0, %1, %2, %3
     }
 }
 
@@ -30,84 +30,84 @@ float4 fma(a, b, c)
 float exp2(float x)
 {
     asm {
-        expp  %0, %1
+        expp	%0, %1
     }
 }
 
 float exp2_full(float x)
 {
     asm {
-        exp   %0, %1
+        exp	%0, %1
     }
 }
 
 float frac(float x)
 {
     asm {
-        frc  %0, %1
+        frc	%0, %1
     }
 }
 
 float4 max(x, y)
 {
     asm {
-        max   %0, %1, %2
+        max	%0, %1, %2
     }
 }
 
 float4 min(x, y)
 {
     asm {
-        min   %0, %1, %2
+        min	%0, %1, %2
     }
 }
 
 float log2(float x)
 {
     asm {
-        logp  %0, %1
+        logp	%0, %1
     }
 }
 
 float log2_full(float x)
 {
     asm {
-        log    %0, %1
+        log	%0, %1
     }
 }
 
 float rcp(float x)
 {
     asm {
-        rcp   %0, %1
+        rcp	%0, %1
     }
 }
 
 float rsqrt(float x)
 {
     asm {
-        rsq   %0, %1
+        rsq	%0, %1
     }
 }
 
 float4 dst(float4 x, float4 y)
 {
     asm {
-        dst   %0, %1, %2
+        dst	%0, %1, %2
     }
 }
 
 float abs(float x)
 {
     asm {
-        max   %0, %1, -%1
+        max	%0, %1, -%1
     }
 }
 
 float step(float y, float x)
 {
     asm {
-        sge   %0, %2, %1
+        sge	%0, %2, %1
     }
 }
 
@@ -120,8 +120,8 @@ float radians(float x)
 float sqrt(float x)
 {
     asm {
-        rsq %z, %1
-        rcp %0, %z
+        rsq	%z, %1
+        rcp	%0, %z
     }
 }
 
@@ -129,10 +129,10 @@ float sqrt(float x)
 float distance(float3 x, float3 y)
 {
     asm {
-        sub %z, %1, %2
-        dp3 %z.w, %z, %z
-        rsq %z.w, %z.w
-        rcp %0, %z.w
+        sub	%z, %1, %2
+        dp3	%z.w, %z, %z
+        rsq	%z.w, %z.w
+        rcp	%0, %z.w
     }
 }
 
@@ -140,8 +140,8 @@ float distance(float3 x, float3 y)
 float degrees(float x)
 {
     asm {
-        rcp %z.x, c95.x
-        mul %0, %z.x, %1
+        rcp	%z.x, c95.x
+        mul	%0, %z.x, %1
     }
 }
 
@@ -149,8 +149,8 @@ float degrees(float x)
 float floor(float x)
 {
     asm {
-        frc %z.w, %1
-        sub %0, %1, %z.w
+        frc	%z.w, %1
+        sub	%0, %1, %z.w
     }
 }
 
@@ -164,9 +164,9 @@ float trunc(float x)
 float ceil(float x)
 {
     asm {
-        frc %z.x, %1
-        sub %z.x, %1, %z.x
-        add %0, %z.x, c95.y
+        frc	%z.x, %1
+        sub	%z.x, %1, %z.x
+        add	%0, %z.x, c95.y
     }
 }
 
@@ -174,20 +174,20 @@ float ceil(float x)
 float round(float x)
 {
     asm {
-        frc %z.x, %1
-        sub %z.y, %1, %z.x
-        sge %z.z, %z.x, c95.z
-        add %0, %z.y, %z.z
+        frc	%z.x, %1
+        sub	%z.y, %1, %z.x
+        sge	%z.z, %z.x, c95.z
+        add	%0, %z.y, %z.z
     }
 }
 
 float4 lit(float n_dot_l, float n_dot_h, float m)
 {
     asm {
-        mov %z.x, %1
-        mov %z.y, %2
-        mov %z.w, %3
-        lit %0, %z
+        mov	%z.x, %1
+        mov	%z.y, %2
+        mov	%z.w, %3
+        lit	%0, %z
     }
 }
 
@@ -195,9 +195,9 @@ float4 lit(float n_dot_l, float n_dot_h, float m)
 float sign(float x)
 {
     asm {
-        slt %z.x, c95.w, r0.x
-        sub %z.x, %z.x, c95.z
-        add %0, %z.x, %z.x
+        slt	%z.x, c95.w, r0.x
+        sub	%z.x, %z.x, c95.z
+        add	%0, %z.x, %z.x
     }
 }
 
@@ -205,12 +205,12 @@ float sign(float x)
 float fmod(float x, float y)
 {
     asm {
-        rcp %z.x, %2
-        mul %z.x, %z.x, %1
-        frc %z.y, %z.x
-        sub %z.x, %z.x, %z.y
-        mul %z.x, %z.x, %2
-        sub %0, %1, %z.x
+        rcp	%z.x, %2
+        mul	%z.x, %z.x, %1
+        frc	%z.y, %z.x
+        sub	%z.x, %z.x, %z.y
+        mul	%z.x, %z.x, %2
+        sub	%0, %1, %z.x
     }
 }
 
@@ -218,11 +218,11 @@ float fmod(float x, float y)
 float3 faceforward(float3 n, float3 i, float3 ng)
 {
     asm {
-        dp3 %z.x, %2, %3
-        slt %z.x, c95.w, %z.x
-        sub %z.x, %z.x, c95.z
-        add %z.x, %z.x, %z.x
-        mul %0, -%1, %z.x
+        dp3	%z.x, %2, %3
+        slt	%z.x, c95.w, %z.x
+        sub	%z.x, %z.x, c95.z
+        add	%z.x, %z.x, %z.x
+        mul	%0, -%1, %z.x
     }
 }
 
@@ -231,10 +231,10 @@ float3 faceforward(float3 n, float3 i, float3 ng)
 float3 reflect(float3 i, float3 n)
 {
     asm {
-        dp3 %z.x, %1, %2
-        add %z.x, %z.x, %z.x
-        mul %z, %z.x, %2
-        sub %0, %1, %z
+        dp3	%z.x, %1, %2
+        add	%z.x, %z.x, %z.x
+        mul	%z, %z.x, %2
+        sub	%0, %1, %z
     }
 }
 
@@ -242,9 +242,9 @@ float3 reflect(float3 i, float3 n)
 float3 normalize(float v)
 {
     asm {
-        dp3 %z.a, %1, %1
-        rsq %z.a, %z.a
-        mul %0, %1, %z.a
+        dp3	%z.a, %1, %1
+        rsq	%z.a, %z.a
+        mul	%0, %1, %z.a
     }
 }
 
@@ -252,8 +252,8 @@ float3 normalize(float v)
 float4 lerp(x, y, float s)
 {
     asm {
-        sub %z, %2, %1
-        mad %0, %z, %3, %1
+        sub	%z, %2, %1
+        mad	%0, %z, %3, %1
     }
 }
 
@@ -262,17 +262,17 @@ float4 lerp(x, y, float s)
 float length(float3 value)
 {
     asm {
-        dp3 %z.a, %1, %1
-        rsq %z.a, %z.a
-        rcp %0, %z.a
+        dp3	%z.a, %1, %1
+        rsq	%z.a, %z.a
+        rcp	%0, %z.a
     }
 }
 
 float clamp(float x, float min, float max)
 {
     asm {
-        min %z, %1, %3
-        max %0, %z, %2
+        min	%z, %1, %3
+        max	%0, %z, %2
     }
 }
 
@@ -284,7 +284,7 @@ float saturate(float x)
 float4 mul(x, y)
 {
     asm {
-        m%tn2x%tn0  %0, %1, %2
+        m%tn2x%tn0	%0, %1, %2
     }
 }
 
@@ -292,12 +292,12 @@ float4 mul(x, y)
 float smoothstep(float mn, float mx, float x)
 {
     asm {
-        sub %z.x, %2, %1
-        rcp %z.x, %z.x
-        sub %z.y, %3, %1
-        mul %z.y, %z.y, %z.x
-        min %z.y, %z.y, c95.y
-        max %0, %z.y, c95.w
+        sub	%z.x, %2, %1
+        rcp	%z.x, %z.x
+        sub	%z.y, %3, %1
+        mul	%z.y, %z.y, %z.x
+        min	%z.y, %z.y, c95.y
+        max	%0, %z.y, c95.w
     }
 }
 
@@ -305,9 +305,9 @@ float smoothstep(float mn, float mx, float x)
 float3 cross(float3 x, float3 y)
 {
     asm {
-        mul	%z, %1.yzx, %2.zxy
-	mul	%z0, %1.zxy, %2.yzx
-        sub	%0, %z, %z0
+        mul	%z1, %1.yzx, %2.zxy
+        mul	%z0, %1.zxy, %2.yzx
+        sub	%0, %z1, %z0
     }
 }
 
@@ -320,14 +320,14 @@ float3 cross(float3 x, float3 y)
 float dot3(x, y)
 {
     asm {
-        dp3   %0, %1, %2
+        dp3	%0, %1, %2
     }
 }
 
 float dot4(x, y)
 {
     asm {
-        dp4   %0, %1, %2
+        dp4	%0, %1, %2
     }
 }
 
@@ -335,9 +335,9 @@ float dot4(x, y)
 float rdistance(float3 x, float3 y)
 {
     asm {
-        sub %z, %1, %2
-        dp3 %z.w, %z, %z
-        rsq %0, %z.w
+        sub	%z, %1, %2
+        dp3	%z.w, %z, %z
+        rsq	%0, %z.w
     }
 }
 
@@ -345,8 +345,8 @@ float rdistance(float3 x, float3 y)
 float rlength(float3 value)
 {
     asm {
-        dp3 %z.x, %1, %1
-        rsq %0, %z.x
+        dp3	%z.x, %1, %1
+        rsq	%0, %z.x
     }
 }
 
@@ -355,12 +355,12 @@ float rlength(float3 value)
 float fresnel(float3 incident, float3 normal)
 {
     asm {
-        dp3 %z.x, %1, %2
-        max %z.x, -%z.x, %z.x
-        sub %z.x, c95.y, %z.x
-        mul %z.x, %z.x, %z.x
-        mul %z.x, %z.x, %z.x
-        mul %0, %z.x, %z.x
+        dp3	%z.x, %1, %2
+        max	%z.x, -%z.x, %z.x
+        sub	%z.x, c95.y, %z.x
+        mul	%z.x, %z.x, %z.x
+        mul	%z.x, %z.x, %z.x
+        mul	%0, %z.x, %z.x
     }
 }
 
@@ -373,20 +373,20 @@ float fresnel(float3 incident, float3 normal)
 float3 RotateToWorld(float3 dir)
 {
     asm {
-        m3x%tn0 %0, %1, c4
+        m3x%tn0	%0, %1, c4
     }
 }
 
 float4 LocalToWorld(float4 pos)
 {
     asm {
-        m4x%tn0 %0, %1, c4
+        m4x%tn0	%0, %1, c4
     }
 }
 
 float4 LocalToScreen(float4 pos)
 {
     asm {
-        m4x%tn0 %0, %1, c0
+        m4x%tn0	%0, %1, c0
     }
 }
