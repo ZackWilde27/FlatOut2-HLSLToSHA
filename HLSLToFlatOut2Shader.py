@@ -1,5 +1,5 @@
 # Zack's HLSL to FlatOut SHA
-version = "v2.8.1"
+version = "v2.8.2"
 # Am I particularly proud of this code? uhh
 
 try:
@@ -1730,7 +1730,7 @@ while stuckInLoop:
                         maxR = 2
                         maxC = 8
                         maxV = 2
-                        linenum = psLine
+
                         rStatus = [False for i in range(maxR)]
                         constants = 3
                         startC = 3
@@ -1741,9 +1741,10 @@ while stuckInLoop:
                                 thatthing = HandleIfDef(thatthing, ifdef, False)
                             while (ifdef := thatthing.find("#ifndef ")) != -1:
                                 thatthing = HandleIfDef(thatthing, ifdef, True)
-                            inGlobal = 0
                             CompileHLSL(thatthing)
-                            inGlobal = 2
+
+                        linenum = psLine
+
                         compiledpixelshader = CompileHLSL(pixelshader, -1, "r0", 2)
                         seenconstants = [False for i in range(maxC)]
                         for hvar in hvars:
@@ -1784,7 +1785,7 @@ while stuckInLoop:
                         maxR = 12
                         maxC = 96
                         maxV = 16
-                        linenum = vsLine
+
                         # c95.x = degrees to radians
                         hvars = [HVar("reservedconstant_95", "c95", "float4(0.0174533f, 1.0f, 0.5f, 0.0f)", "f4")]
                         fvars = []
@@ -1793,9 +1794,9 @@ while stuckInLoop:
                         script = vertexshader
 
                         with open("vertex_builtin.hlsl") as file:
-                            inGlobal = 0
                             CompileHLSL(file.read())
-                            inGlobal = 2
+
+                        linenum = vsLine
 
                         compiledvertexshader = CompileHLSL(vertexshader, -1, "oPos", 2)
                         seenconstants = [False for i in range(maxC)]
