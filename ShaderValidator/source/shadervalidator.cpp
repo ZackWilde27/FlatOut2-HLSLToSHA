@@ -373,7 +373,7 @@ static void LoadTextures()
 		check(D3DXCreateCubeTexture(d3dDevice, 512, 1, 0, D3DFMT_UNKNOWN, D3DPOOL_DEFAULT, &pSpecular), "Failed to create lighting texure: %s");
 
 		// I have no idea how bugbear took 6 separate textures and combined them into a cubemap,
-		// because this method causes some of the textures to be oriented the wrong way. I had to edit the images to compesate
+		// because this method causes some of the textures to be oriented the wrong way. I had to edit the images to compensate
 		LoadImageOnCubemap(D3DCUBEMAP_FACE_POSITIVE_X, L"arena_day_ft.tga", pSpecular);
 		LoadImageOnCubemap(D3DCUBEMAP_FACE_POSITIVE_Y, L"arena_day_lf.tga", pSpecular);
 		LoadImageOnCubemap(D3DCUBEMAP_FACE_POSITIVE_Z, L"arena_day_up.tga", pSpecular);
@@ -718,9 +718,8 @@ void SetupMatrices()
 
 	float CAMERA[] = { eye.x, eye.y, eye.z, 0.0f };
 	d3dDevice->SetVertexShaderConstantF(8, CAMERA, 1);
-
-	// Floats are the size of ints, so...
-	memset(TIME, *(int*)&timer, 4 * sizeof(float));
+	
+	TIME[0] = TIME[1] = TIME[2] = TIME[3] = timer;
 	d3dDevice->SetVertexShaderConstantF(14, TIME, 1);
 
 	if (!pEffect)
