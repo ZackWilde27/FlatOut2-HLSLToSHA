@@ -525,12 +525,6 @@ static char* winread(HANDLE hFile, unsigned long long* out_length)
 
 static void OpenShader(const wchar_t* filename)
 {
-	if (shader)
-	{
-		free(shader);
-		shader = NULL;
-	}
-
 	currentFilename = (wchar_t*)filename;
 
 	HANDLE hFile = winopen(filename, L'r');
@@ -538,6 +532,23 @@ static void OpenShader(const wchar_t* filename)
 	DWORD high;
 	DWORD low = GetFileSize(hFile, &high);
 	unsigned long long fullresult = ((unsigned long long)high << 32) | low;
+
+	// There's a race condition with my compiler, where the validator knows it changed before Python is done with it, so it reads a -1 size and tries to allocate over 4GB.
+	if (low == -1)
+	{
+		// Forces it to retry on the next frame
+		testmtime = 0;
+		return;
+	}
+
+	if (shader)
+	{
+		free(shader);
+		shader = NULL;
+	}
+
+	FileHasUpdated(filename, &testmtime);
+	
 	shaderLength = fullresult;
 	shader = (char*)malloc(fullresult);
 	if (shader == NULL)
