@@ -296,14 +296,14 @@ myFloat = specular * myFloat + colour;
 ```
 
 In my compiler, parentheses will allocate a new register for the result, on top of making sure it happens beforehand.
-```
+```hlsl
 // That means parentheses can fix the overwriting issue from before
 // A new register will be allocated for colour + specular, preserving myFloat for the multiply
 myFloat = (colour + specular) * myFloat;
 ```
 
 Because of the limited number of registers, there are some expressions you can't do
-```
+```hlsl
 // Can't be done in the pixel shader, since it needs 3 registers (1 for var1 and 2 for each expression)
 float4 var1 = (colour + specular) * (dirt - lighting.a);
 
