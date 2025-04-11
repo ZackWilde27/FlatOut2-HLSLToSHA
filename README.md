@@ -193,6 +193,9 @@ There's only 2 registers that can be both read and written to, so you are limite
 float4 var1 = colour + specular;
 float4 var2 = lerp(var1, dirt, specular.a);
 float4 var3 = dirt; // This will be treated as var2, overwriting the previous lerp
+
+// I should mention, it's possible to use a texture register as a variable, but in my experience it's difficult to use them without the game throwing errors
+lighting.rgb = colour + specular;
 ```
 
 The compiler will recognize when variables are no longer needed to free-up registers, allowing for what looks like more than 2 variables
@@ -285,11 +288,27 @@ float4 myFloat = ((colour + specular) * lighting.a) + AMBIENT;
 
 Also the destination is used to store the immediate results, so it can't be part of the equation unless it's in the first operation
 ```hlsl
-// myFloat will get overwritten with (colour + specular) before the multiply, losing the value that was stored in there.
+// myFloat will get overwritten with (colour + specular) before the multiply, losing the value that was stored in there
 myFloat = colour + specular * myFloat;
 
 // This one shouldn't cause problems
 myFloat = specular * myFloat + colour;
+```
+
+In my compiler, parentheses will allocate a new register for the result, on top of making sure it happens beforehand.
+```
+// That means parentheses can fix the overwriting issue from before
+// A new register will be allocated for colour + specular, preserving myFloat for the multiply
+myFloat = (colour + specular) * myFloat;
+```
+
+Because of the limited number of registers, there are some expressions you can't do
+```
+// Can't be done in the pixel shader, since it needs 3 registers (1 for var1 and 2 for each expression)
+float4 var1 = (colour + specular) * (dirt - lighting.a);
+
+// If you have 2 variables, you can't use parentheses at all.
+float4 var2 = var1 + (dirt - lighting.a);
 ```
 
 
@@ -396,10 +415,8 @@ If you've written C code, you know how these work, but for people who haven't or
 
 Define can create a substitution for some other text that gets replaced before the script is compiled, so it could be a stand-in for a type, function, anything really
 ```hlsl
+// The serious one
 #define Tint(base, tintval) base * tintval
-
-// You can also change the pixel shader version with a definition
-#define ps_1_1
 
 #define function float4
 #define let float4
@@ -410,13 +427,17 @@ function PixelShader(colour, specular) {
     let c = Tint(specular, colour);
     std::cout << c;
 }
+
+// You can also change the pixel shader version with a definition
+#define ps_1_1
+
 ```
 
 Ifdef/ifndef can be used to either selectively include code, or switch between 2 blocks of code
 ```hlsl
 #define MYDEFINITION
 
-float4 PixelShader(colour, specular)
+float4 PixelShader(float4 colour, float4 specular)
 {
     // This code will only be included if MYDEFINITION is not defined
     #ifndef MYDEFINITION
@@ -432,6 +453,7 @@ float4 PixelShader(colour, specular)
     #endif
 
     // ifdefs can now take a Python expression to calculate
+    // I don't know how useful it will be for you, it's basically a replacement for the hard-coded version system I had before
     #ifdef float(pixelshaderversion) > 1.1
 	// Newer feature
     #else
@@ -439,7 +461,9 @@ float4 PixelShader(colour, specular)
 }
 ```
 
-Include is used to paste the contents of another file in a particular location, so you can have commonly-used code in a separate file
+Include will paste the contents of another file in a particular location, so you can have commonly-used code in a separate file
+
+
 ```hlsl
 // In my 'utils.hlsl' file:
 #define Tint(a, b) a * b
@@ -448,8 +472,9 @@ Include is used to paste the contents of another file in a particular location, 
 // Then in the actual file:
 #include "utils.hlsl"
 
-float4 PixelShader(colour, specular)
+float4 PixelShader(float4 colour, float4 specular)
 {
+    // Since functions have to be in the 
     return Tint(colour, specular);
 }
 
@@ -466,13 +491,14 @@ float4 psMainD3D9(float4 colour, float4 specular, float4 blend)
     float4 scratchValue; // reserves r0 for the if statement  
 
     // Implements (a > b) ? ifA : ifB;
-    float4 GreaterThan(a, b, ifA, ifB)
+    // Types and in/out are optional.
+    float4 GreaterThan(in float a, float b, ifA, ifB)
     {
         scratchValue.a = a - b + 0.5f;
         return ? ifA : ifB;
     }
 
-    return GreaterThan(blend, 0.25f, colour, specular);
+    return GreaterThan(BLEND, 0.25f, colour, specular);
 }
 ```
 
@@ -538,6 +564,7 @@ var1 = "c2" + "c1";
 
 // The 'string' type is another way to create string macros
 string AMBIENT = "v0";
+// const keyword is optional
 const string SHADOW = "c2";
 ```
 
