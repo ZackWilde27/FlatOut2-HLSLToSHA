@@ -474,7 +474,8 @@ Include will paste the contents of another file in a particular location, so you
 
 float4 PixelShader(float4 colour, float4 specular)
 {
-    // Since functions have to be in the 
+    // Since functions have to be in the shader, you'll have to put the include statement inside, like this
+    #include "pixelshaderfunctions.hlsl"
     return Tint(colour, specular);
 }
 
