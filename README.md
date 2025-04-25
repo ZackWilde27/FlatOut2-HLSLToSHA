@@ -1,7 +1,9 @@
 ### The future of the compiler
-I found out that the game supports up to shader model 3, so now my recommendation is to write it [the conventional way](https://github.com/ZackWilde27/FlatOut2-HLSLToSHA/wiki/Putting-HLSL-in-the-shader-file). I'm considering a few options, like upgrading to 3.0 assembly, or making a new source-to-source compiler.
+I found out that the game supports up to shader model 3, so now my recommendation is to write it [the conventional way](https://github.com/ZackWilde27/FlatOut2-HLSLToSHA/wiki/Putting-HLSL-in-the-shader-file) to get the most features.
 
-I want to keep the current version around, since shader model 1 is not officially supported by Microsoft anymore, and it might be possible to use it for other games.
+The only issue is that previewing the shader in the validator doesn't work with 3.0 (It looks matrix related, but I don't know the why)
+
+The plan is to eventually upgrade, but I want to figure out the other shaders before tackling that (and also try to iron out all the bugs).
 
 <br>
 
@@ -58,7 +60,7 @@ At the start it'll prompt you for an HLSL file to convert. The resulting shader 
 
 <br>
 
-The script also has the option to run in a loop, so that when it detects the file has changed, it'll automatically recompile. Useful for debugging, and maybe other things too.
+The script also has the option to run in a loop, so that when it detects the file has changed, it'll automatically recompile. I usually have both the HLSL and SHA file open side-by-side in VS Code for quick debugging
 
 <br>
 
@@ -186,7 +188,7 @@ Technique T0
 
 ### Variables
 
-FlatOut 2 uses Shader Model 1, which is extremely basic so the HLSL has some quirks.
+My compiler (and the base game) uses Shader Model 1, which is extremely basic so the HLSL has some quirks.
 
 There's only 2 registers that can be both read and written to, so you are limited to 2 variables at one time.
 ```hlsl
@@ -228,6 +230,8 @@ const float const4 = 1.0f;
 
 ### Keywords
 Reserved constants and other registers can be accessed with keywords
+- HALF : General purpose constant (float4(0.5, 0.5, 0.5, 0.0))
+- LIMITER : Used in the original car body shader as an 'overlighting limiter'
 - SHADOW : The shadow mask of the track
 - AMBIENT : Ambient lighting
 - FRESNEL : Fresnel term
@@ -394,7 +398,7 @@ Since Python is the one doing the looping, I added the option to write it in a p
 // Just like python, it can accept 1-3 inputs indicating the start, end, and step
 for i in range(5)
 {
-    for j in range(5, 50)
+    for (j in range(5, 50))
     {
         var1 *= 0.5f;
     }
@@ -476,6 +480,7 @@ float4 PixelShader(float4 colour, float4 specular)
 {
     // Since functions have to be in the shader, you'll have to put the include statement inside, like this
     #include "pixelshaderfunctions.hlsl"
+
     return Tint(colour, specular);
 }
 
@@ -487,7 +492,7 @@ float4 PixelShader(float4 colour, float4 specular)
 ### Functions
 In this shader model, there's no way to call functions, so these are macros that can have multiple lines, meaning they will copy+paste the code inside.
 ```hlsl
-float4 psMainD3D9(float4 colour, float4 specular, float4 blend)
+float4 psMainD3D9(float4 colour, float4 specular)
 {
     float4 scratchValue; // reserves r0 for the if statement  
 
@@ -779,14 +784,16 @@ float4 VertexShader(float3 pos : POSITION, float3 nrm : NORMAL, float4 diff : CO
     colour.uv = uvs.xy;
     dirt.uv = uvs.xy;
 
-    float3 worldNormal = RotateToWorld(nrm);
+    float4 worldNormal;
+    worldNormal.xyz = RotateToWorld(nrm);
+    worldNormal.a = 1.0f;
 
     // The lighting cubemap can just be given the world normal
     lighting.xyz = worldNormal;
 
     // Calculate the reflection vector for the specular cubemap
     float3 worldPos = LocalToWorld(pos);
-    float4 incident = normalize(worldPos - CAMERA);
+    float3 incident = normalize(worldPos - CAMERA);
     specular.xyz = reflect(incident, worldNormal);
 
     // The blend factor for the car body comes from the COLOR input
