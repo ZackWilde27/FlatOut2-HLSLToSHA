@@ -847,6 +847,61 @@ PixelShader(colour, specular, dirt, lighting)
 # Troubleshooting
 There are some very specific limitations with the assembly [which are documented here](https://learn.microsoft.com/en-us/windows/win32/direct3dhlsl/dx9-graphics-reference-asm-ps-1-x), so even though the HLSL may compile fine, that doesn't mean FlatOut 2 will be able to compile it.
 
+<br>
+
+### Can't access more than 1 ____ in a single instruction
+I thought i'd include a section about instructions to make this error easier to fix
+
+What counts as an instruction?
+```hlsl
+// My compiler is about as low-level as HLSL can get
+// Each line will usually corrospond to a single instruction, unless you have multiple math expressions and functions
+
+float4 var0; // Declarations do not add an instruction
+float4 var1;
+
+// Assigning to a variable will make at least 1 instruction, the move
+var1 = var0;
+// mov r1, r0
+// You don't have to worry about the limitation in this situation
+
+// The move is a last resort though, it always looks for an expression to calculate instead
+// So if there's math, it's still only 1 instruction
+var1 = var0 + pos.x;
+// add r1, r0, v0.x
+
+// All of the intrinsic functions that don't have an asterisk will be 1 instruction as well
+var1 = dot(colour, dirt);
+// dp4 r1, t0, t1
+```
+
+So you can't have more than 1 constant or vertex parameter in a single math expression, or function call
+
+```hlsl
+const float3 a = float3(0.0f, 0.0f, 1.0f);
+const float3 b = float3(1.0f, 0.0f, 0.0f);
+
+var1 = dot(a, b); // Can't be done, 2 different constants in 1 instruction
+// dp3 r1, c32.xyz, c33.xyz
+
+var2 = pos.x + nrm.y; // Can't be done, 2 different inputs in 1 instruction
+// add r1, v0.x, v1.y
+
+// The easiest way to fix this error is to move one of them to a variable first
+float temp = pos.x;
+var2 = temp + nrm.y;
+// mov r2.x, v0.x
+// add r1.x, r2.x, v1.y
+
+// If it's due to constants, you can make a new constant with all of them together
+float2 tempConst = float2(0.8f, 0.1f);
+var1 = mad(tempConst.x, tempConst.y, var0.a);
+// mad r1, c32.x, c32.y, r0.a
+
+```
+
+<br>
+
 Use ```ZacksShaderValidator.exe``` to check if the shader will run in-game.
 
 Clicking 'Validate SHA' will prompt you for an SHA file to validate, then show the errors in a message box.
