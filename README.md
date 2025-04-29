@@ -854,8 +854,8 @@ I thought i'd include a section about instructions to make this error easier to 
 
 What counts as an instruction?
 ```hlsl
-// My compiler is about as low-level as HLSL can get
-// Each line will usually corrospond to a single instruction, unless you have multiple math expressions and functions
+// My compiler is about as low-level as a high-level-shader-language can get
+// Each line usually corrosponds to an instruction, unless you have multiple math expressions, or functions that use workarounds
 
 float4 var0; // Declarations do not add an instruction
 float4 var1;
@@ -871,8 +871,8 @@ var1 = var0 + pos.x;
 // add r1, r0, v0.x
 
 // All of the intrinsic functions that don't have an asterisk will be 1 instruction as well
-var1 = dot(colour, dirt);
-// dp4 r1, t0, t1
+var1 = dot(var0.xyz, pos);
+// dp4 r1, r0.xyz, v0.xyz
 ```
 
 So you can't have more than 1 constant or vertex parameter in a single math expression, or function call
@@ -887,7 +887,7 @@ var1 = dot(a, b); // Can't be done, 2 different constants in 1 instruction
 var2 = pos.x + nrm.y; // Can't be done, 2 different inputs in 1 instruction
 // add r1, v0.x, v1.y
 
-// The easiest way to fix this error is to move one of them to a variable first
+// The easiest way to fix it is to move one of them to a variable first
 float temp = pos.x;
 var2 = temp + nrm.y;
 // mov r2.x, v0.x
@@ -896,8 +896,7 @@ var2 = temp + nrm.y;
 // If it's due to constants, you can make a new constant with all of them together
 float2 tempConst = float2(0.8f, 0.1f);
 var1 = mad(tempConst.x, tempConst.y, var0.a);
-// mad r1, c32.x, c32.y, r0.a
-
+// mad r1, c34.x, c34.y, r0.a
 ```
 
 <br>
