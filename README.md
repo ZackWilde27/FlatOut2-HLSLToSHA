@@ -872,7 +872,7 @@ var1 = var0 + pos.x;
 
 // All of the intrinsic functions that don't have an asterisk will be 1 instruction as well
 var1 = dot(var0.xyz, pos);
-// dp4 r1, r0.xyz, v0.xyz
+// dp3 r1, r0.xyz, v0.xyz
 ```
 
 So you can't have more than 1 constant or vertex parameter in a single math expression, or function call
