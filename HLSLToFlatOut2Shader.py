@@ -1,5 +1,5 @@
 # Zack's HLSL to FlatOut SHA
-version = "v2.8.3"
+version = "v2.9"
 # Am I particularly proud of this code? uhh
 
 try:
@@ -585,6 +585,16 @@ def HandleSquareBrackets(tokens, i):
 
     return fullsembly
 
+
+def CheckForTooManyRegisters(sembly, registerType, description):
+    result = search(f", {registerType}[0-9]+(\\.[xyzwrgba]+)?, {registerType}[0-9]+(\\.[xyzwrgba]+)?\n", sembly)
+    
+    if result:
+        indexes = result.string[result.start():result.end()][2:].split(",")
+        indexes = [RemoveSwizzle(item.strip()[1:]) for item in indexes]
+        if indexes[0] != indexes[1]:
+            Error(f"Can't access more than 1 {description} in a single instruction")
+
 def CompileOperand(string, ext="", dst="", components=4):
     global unusedRegisters
 
@@ -621,6 +631,12 @@ def CompileOperand(string, ext="", dst="", components=4):
             components = int(newtype[-1]) if newtype[-1] in "234" else 1
             tokens[0] = tokens[0][tokens[0].index(")") + 1:]
         fullsembly += CompileOperand_Partial(tokens[0], ext, dst, components)[1]
+
+    if not isPixelShader:
+        CheckForTooManyRegisters(fullsembly, "v", "vertex parameter")
+
+    CheckForTooManyRegisters(fullsembly, "c", "constant")
+    
 
     return [dst, fullsembly]
 
@@ -938,9 +954,12 @@ def includes(lst, item, func=includes_defines):
     return False
 
 # Removes vector splitting to get just the variable
-def StripSplit(string): return string.split(".")[0].strip()
+def RemoveSwizzle(string): return string.split(".")[0].strip()
 
 script = ""
+
+def TooManyRegisters(operands, regType, limit=1):
+    return [item[0] == regType for item in operands].count(True) > limit
 
 # This function optimizes the assembly code that the compiler output.
 def SecondPass(script):
@@ -958,6 +977,11 @@ def SecondPass(script):
         if script[tdex + 1:tdex + 4] == "add":
             adds = script[script.index("\t", tdex + 1) + 1:script.index("\n", tdex + 1)].split(",")
             adds = [item.strip() for item in adds]
+            sources = muls[1:] + adds[1:]
+            if TooManyRegisters(sources, "c") or TooManyRegisters(sources, "v"):
+                dex = mdex + 1
+                continue
+            
             if muls[0] in adds[1:]:
                 mads = [item.strip() for item in ArrangeMad(muls, adds)]
                 tempScript = script[:mdex] + "mad"
@@ -1352,7 +1376,7 @@ def CompileHLSL(script, localVars=-1, dst="r0", inGlobal=0):
                             name = tokens[0]
                             extension = ""
                             if "." in tokens[0]:
-                                name = StripSplit(tokens[0])
+                                name = RemoveSwizzle(tokens[0])
                                 extension = tokens[0][tokens[0].index("."):]
                             if name in hvars + dhvars:
                                 hv = HVarNameToVar(name)
