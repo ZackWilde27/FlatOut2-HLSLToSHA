@@ -885,6 +885,7 @@ const float3 b = float3(1.0f, 0.0f, 0.0f);
 
 var1 = dot(a, b); // Can't be done, 2 different constants in 1 instruction
 // dp3 r1, c32.xyz, c33.xyz
+// The pixel shader is surprisingly not as limited, you can have up to 2 different constants in an instruction
 
 var1 = pos.x + nrm.y; // Can't be done, 2 different inputs in 1 instruction
 // add r1, v0.x, v1.y
