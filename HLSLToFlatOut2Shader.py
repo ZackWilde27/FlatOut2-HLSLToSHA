@@ -1,5 +1,5 @@
 # Zack's HLSL to FlatOut SHA
-version = "v2.9"
+version = "v2.9.1"
 # Am I particularly proud of this code? uhh
 
 try:
@@ -9,7 +9,7 @@ except:
 
 from time import time, localtime, sleep
 from os.path import getmtime
-from re import findall, search
+from re import findall, search, split
 
 filename = ""
 author = ""
@@ -586,14 +586,14 @@ def HandleSquareBrackets(tokens, i):
     return fullsembly
 
 
-def CheckForTooManyRegisters(sembly, registerType, description):
-    result = search(f", {registerType}[0-9]+(\\.[xyzwrgba]+)?, {registerType}[0-9]+(\\.[xyzwrgba]+)?\n", sembly)
-    
-    if result:
-        indexes = result.string[result.start():result.end()][2:].split(",")
-        indexes = [RemoveSwizzle(item.strip()[1:]) for item in indexes]
-        if indexes[0] != indexes[1]:
-            Error(f"Can't access more than 1 {description} in a single instruction")
+def CheckForTooManyRegisters(sembly, registerType, description, limit=1):
+    matches = findall(f", {registerType}[0-9]+\\.?[xyzwrgba]*", sembly)
+
+    if len(matches) > 1:
+        indexes = set([RemoveSwizzle(item[1:].strip()[1:]) for item in matches])
+
+        if len(indexes) > limit:
+            Error(f"Can't access more than {limit} {description}{'s' if limit > 1 else ''} in a single instruction")
 
 def CompileOperand(string, ext="", dst="", components=4):
     global unusedRegisters
@@ -635,7 +635,7 @@ def CompileOperand(string, ext="", dst="", components=4):
     if not isPixelShader:
         CheckForTooManyRegisters(fullsembly, "v", "vertex parameter")
 
-    CheckForTooManyRegisters(fullsembly, "c", "constant")
+    CheckForTooManyRegisters(fullsembly, "c", "constant", 2 if isPixelShader else 1)
     
 
     return [dst, fullsembly]
