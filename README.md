@@ -804,7 +804,7 @@ float4 VertexShader(float3 pos : POSITION, float3 nrm : NORMAL, float4 diff : CO
     float4 f;
     f.x = abs(dot(incident, worldNormal));
     f.x = 1.0f - f.x;
-    f.y = f.x * f.x * f.x;
+    f.y = f.x * f.x * f.x * f.x;
     FRESNEL = mad(f.y, 0.5f, 0.5f);
 
     float3 inAmbient;
@@ -820,13 +820,18 @@ float4 VertexShader(float3 pos : POSITION, float3 nrm : NORMAL, float4 diff : CO
 
 float4 PixelShader(float4 colour, float4 specular, float4 dirt, float4 lighting)
 {
-    float4 c = specular * FRESNEL;
-    c = saturate(c + lerp(colour, dirt, BLEND));
+    float4 col = lerp(colour, dirt, BLEND);
 
-    float4 l = lighting.a * SHADOW;
-    l = saturate(mad(AMBIENT, 0.6f, l));
+    // Desaturate by getting the greyscale version and lerping towards it
+    float4 greyscale = dot(col, HALF) * 2;
 
-    return c * l;
+    col = lerp(greyscale, col, 0.9f);
+
+    float4 light = lighting.a * SHADOW;
+    light = saturate(mad(AMBIENT, 0.6f, light));
+
+    col = lerp(col, specular, FRESNEL);
+    return col * light;
 }
 ```
 
