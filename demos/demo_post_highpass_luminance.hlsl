@@ -3,8 +3,7 @@
 
 #pconstants 6
 
-// There's still a bug where you can't add a semi-colon to the end of the inputStreamFormat, I'll fix that tomorrow
-const string inputStreamFormat = "PosprojTex4"
+const string inputStreamFormat = "PosprojTex4";
 
 #define weights "c5"
 #define scale "c4"
