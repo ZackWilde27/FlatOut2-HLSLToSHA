@@ -5,16 +5,6 @@
 // Intrinsic Functions
 ////////////////////////////
 
-// The %tn1 will be replaced with the first input's number of components
-// So it'll change to a dp3 or dp4 based on the input
-// %tn0 would be replaced with the output's number of components, and so on.
-float dot(x, y)
-{
-    asm {
-        dp%tn1	%0, %1, %2
-    }
-}
-
 float4 mad(a, b, c)
 {
     asm {
@@ -25,6 +15,29 @@ float4 mad(a, b, c)
 float4 fma(a, b, c)
 {
     return mad(a, b, c);
+}
+
+// The %tn1 will be replaced with the first input's number of components
+// So it'll change to a dp3 or dp4 based on the input
+// %tn0 would be replaced with the output's number of components, and so on.
+float dot(float4 x, float4 y)
+{
+    asm {
+        dp4	%0, %1, %2
+    }
+}
+
+float dot(float3 x, float3 y)
+{
+    asm {
+        dp3	%0, %1, %2
+    }
+}
+
+float dot(float2 x, float2 y)
+{
+    float2 that = x * y;
+    return that.x + that.y;
 }
 
 float exp2(float x)
@@ -83,12 +96,69 @@ float rcp(float x)
     }
 }
 
+float2 rcp(float2 x)
+{
+    asm {
+        rcp %0.x, %1.x
+        rcp %0.y, %1.y
+    }
+}
+
+float3 rcp(float3 x)
+{
+    asm {
+        rcp %0.x, %1.x
+        rcp %0.y, %1.y
+        rcp %0.z, %1.z
+    }
+}
+
+float4 rcp(float4 x)
+{
+    asm {
+        rcp %0.x, %1.x
+        rcp %0.y, %1.y
+        rcp %0.z, %1.z
+        rcp %0.w, %1.w
+    }
+}
+
+
 float rsqrt(float x)
 {
     asm {
         rsq	%0, %1
     }
 }
+
+float2 rsqrt(float2 x)
+{
+    asm {
+        rsq	%0.x, %1.x
+        rsq	%0.y, %1.y
+    }
+}
+
+float3 rsqrt(float3 x)
+{
+    asm {
+        rsq	%0.x, %1.x
+        rsq	%0.y, %1.y
+        rsq	%0.z, %1.z
+    }
+}
+
+
+float4 rsqrt(float4 x)
+{
+    asm {
+        rsq	%0.x, %1.x
+        rsq	%0.y, %1.y
+        rsq	%0.z, %1.z
+        rsq	%0.w, %1.w
+    }
+}
+
 
 float4 dst(float4 x, float4 y)
 {
@@ -97,7 +167,7 @@ float4 dst(float4 x, float4 y)
     }
 }
 
-float abs(float x)
+float4 abs(x)
 {
     asm {
         max	%0, %1, -%1
@@ -125,6 +195,42 @@ float sqrt(float x)
     }
 }
 
+float2 sqrt(float2 x)
+{
+    asm {
+        rsq	%z.x, %1.x
+        rcp	%0.x, %z.x
+        rsq	%z.y, %1.y
+        rcp	%0.y, %z.y
+    }
+}
+
+float3 sqrt(float3 x)
+{
+    asm {
+        rsq	%z.x, %1.x
+        rcp	%0.x, %z.x
+        rsq	%z.y, %1.y
+        rcp	%0.y, %z.y
+        rsq	%z.z, %1.z
+        rcp	%0.z, %z.z
+    }
+}
+
+float4 sqrt(float4 x)
+{
+    asm {
+        rsq	%z.x, %1.x
+        rcp	%0.x, %z.x
+        rsq	%z.y, %1.y
+        rcp	%0.y, %z.y
+        rsq	%z.z, %1.z
+        rcp	%0.z, %z.z
+        rsq	%z.w, %1.w
+        rcp	%0.w, %z.w
+    }
+}
+
 // Calculated as length(x - y)
 float distance(float3 x, float3 y)
 {
@@ -133,6 +239,25 @@ float distance(float3 x, float3 y)
         dp3	%z.w, %z, %z
         rsq	%z.w, %z.w
         rcp	%0, %z.w
+    }
+}
+
+float distance(float2 x, float2 y)
+{
+    asm {
+        sub	%z, %1, %2
+        mul	%z.w, %z.x, %z.x
+        mad %z.w, %z.y, %z.y, %z.w
+        rsq	%z.w, %z.w
+        rcp	%0, %z.w
+    }
+}
+
+float distance(float x, float y)
+{
+    asm {
+        sub	%z, %1, %2
+        max %0, %z, -%z
     }
 }
 
@@ -311,6 +436,63 @@ float3 cross(float3 x, float3 y)
     }
 }
 
+////////////////////////////
+// Type-Building Functions
+////////////////////////////
+
+float2 float2(float x, float y)
+{
+    "%0.x" = x;
+    "%0.y" = y;
+}
+
+float2 float2(float x)
+{
+    return x;
+}
+
+float3 float3(float x)
+{
+    return x;
+}
+
+float3 float3(float x, float y, float z)
+{
+    "%0.x" = x;
+    "%0.y" = y;
+    "%0.z" = z;
+}
+
+float3 float3(float2 xy, float z)
+{
+    "%0.xy" = xy;
+    "%0.z" = z;
+}
+
+float4 float4(float x)
+{
+    return x;
+}
+
+float4 float4(float2 xy, float2 zw)
+{
+    "%0.xy" = xy;
+    "%0.zw" = zw;
+}
+
+float4 float4(float3 xyz, float w)
+{
+    "%0.xyz" = xyz;
+    "%0.w" = w;
+}
+
+float4 float4(float x, float y, float z, float w)
+{
+    "%0.x" = x;
+    "%0.y" = y;
+    "%0.z" = z;
+    "%0.w" = w;
+}
 
 ////////////////////////////
 // My Intrinsic Functions
