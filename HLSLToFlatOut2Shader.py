@@ -1,5 +1,5 @@
 # Zack's HLSL to FlatOut SHA
-version = "v2.9.1"
+version = "v3.0"
 # Am I particularly proud of this code? uhh
 
 try:
@@ -9,29 +9,36 @@ except:
 
 from time import time, localtime, sleep
 from os.path import getmtime
-from re import findall, search, split
+from re import findall, search
+
+isPixelShader = True
 
 filename = ""
 author = ""
 authors = "" # I accidentally made a typo in the original settings file so it's a feature now
 loop = ""
+
+# Cosmetic stuff
 is24Hour = False
-isPixelShader = True
-noOptimizations = False
 includeComments = True
+dateFormat = "M/D/Y" # D will be replaced with the day, M with the month, and so on
+
 # Whether to put constants in the pass, or use def instructions.
 constantsInPass = True
+stopOnReturn = True # Whether to stop compiling when it reaches a return
 
 # Things meant for me when I'm debugging, can be changed if there's an edge case
 printOnNoReturnCode = False # Will add a 'No return code needed' comment if a statement generates a mov where the source and destination are the same
 debugComments = False # Adds information meant for debugging, such as when variables get deleted
 autoDiscard = True # Whether to discard un-used variables to free up registers
+noOptimizations = False # Skips the second pass that does things like combining multiplies and adds into mads, and applying shortcuts when a mov is unnecessary
+noDefaultOverload = True # Produces an error when no overloaded functions match, instead of just going with the first one
 
-# How many constants are reserved by the game, could be changed to make it more compatible with another game.
+# How many constants are reserved by the game, can vary from shader to shader
+# The default values are for the car body
 vertexConstants = 32
 pixelConstants = 3
 
-dateFormat = "M/D/Y" # D will be replaced with the day, M with the month, and so on
 
 class HVar:
     def __init__(self, name, register, value, tyype, offset=0):
@@ -71,9 +78,13 @@ class HStruct:
 
 
 class HFunc:
-    def __init__(self, name, code):
+    def __init__(self, name, code, rtnType, paramType):
         self.name = name
         self.code = code
+        # These are going to be used to determine if a function actually works in the given situation
+        # allowing for overloading.
+        self.rtn = rtnType
+        self.params = paramType
 
     def __eq__(self, other):
         return self.name == other
@@ -96,12 +107,13 @@ def Error(message):
 dhvars = [HVar("SHADOW", "c2", "", "f4"), HVar("AMBIENT", "v0", "", "f3"), HVar("FRESNEL", "v0.a", "", "f1", 3), HVar("BLEND", "v1.a", "", "f1", 3), HVar("%split%", "", "", "")]
 hvars = []
 fvars = []
-hfuncs = [HFunc("dot", "dp3\t%0, %1, %2"), HFunc("lerp", "lrp\t%0, %3, %1, %2"), HFunc("mad", "mad\t%0, %1, %2, %3")]
+hfuncs = []
+#hfuncs = [HFunc("dot", "dp3\t%0, %1, %2"), HFunc("lerp", "lrp\t%0, %3, %1, %2"), HFunc("mad", "mad\t%0, %1, %2, %3")]
 
 def ResetDHVars(isPS=isPixelShader):
     global dhvars
     dhvars = dhvars[dhvars.index("%split%"):]
-    dhvars = ([HVar("SHADOW", "c2", "", "f4"), HVar("AMBIENT", "v0", "", "f3"), HVar("FRESNEL", "v0.a", "", "f1"), HVar("BLEND", "v1.a", "", "f1"), HVar("EXTRA", "v1", "", "f3"), HVar("HALF", "c0", "", "f4"), HVar("LIMITER", "c1", "", "f4")] if isPS else [HVar("FRESNEL", "oD0", "", "f1", 3), HVar("AMBIENT", "oD0.xyz", "", "f3"), HVar("BLEND", "oD1", "", "f1", 3), HVar("EXTRA", "oD1.xyz", "", "f3"), HVar("CAMERA", "c8", "", "f3"), HVar("PLANEX", "c17", "", "f4"), HVar("PLANEY", "c18", "", "f4"), HVar("PLANEZ", "c19", "", "f4"), HVar("TIME", "c14", "", "f4")]) + dhvars
+    dhvars = ([HVar("SHADOW", "c2", "", "f4"), HVar("AMBIENT", "v0", "", "f3"), HVar("FRESNEL", "v0.a", "", "f1"), HVar("BLEND", "v1.a", "", "f1"), HVar("EXTRA", "v1", "", "f3"), HVar("HALF", "c0", "", "f4"), HVar("LIMITER", "c1", "", "f4")] if isPS else [HVar("FRESNEL", "oD0", "", "f1", 3), HVar("AMBIENT", "oD0.xyz", "", "f3"), HVar("BLEND", "oD1", "", "f1", 3), HVar("EXTRA", "oD1.xyz", "", "f3"), HVar("CAMERA", "c8", "", "f3"), HVar("CAMDIR", "c9", "", "f3"), HVar("TIME", "c14", "", "f4"), HVar("PLANEX", "c17", "", "f4"), HVar("PLANEY", "c18", "", "f4"), HVar("PLANEZ", "c19", "", "f4")]) + dhvars
 
 def PSTexToVSTex():
     for dhvar in dhvars:
@@ -112,6 +124,8 @@ def PSTexToVSTex():
 def ResetAVars(isPS=isPixelShader):
     global hfuncs
     hfuncs = []
+    # The type-building functions have to be added manually, since the compiler gets confused
+    #hfuncs = [HFunc("float4", "mov\t%0.rgb, %1\n+mov\t%0.a, %2", 4, [3, 1])] if isPS else [HFunc("float4", "mov\t%0.xyz, %1\nmov\t%0.w, %2", 4, [3, 1]), HFunc("float4", "mov\t%0.xyzw, %1", 4, [1])]
     #hfuncs = [HFunc("dot", "dp%tn1\t%0, %1, %2", 1.2), HFunc("dot", "dp3\t%0, %1, %2", 1.1, 1.1), HFunc("lerp", "lrp\t%0, %3, %2, %1"), HFunc("mad", "mad\t%0, %1, %2, %3"), HFunc("fma", "mad\t%0, %1, %2, %3"), HFunc("normalize", "dp3_sat\t%z, %1_bx2, %1_bx2\nmad\t%0, %1_bias, 1-%z, %1_bx2")] if isPS else [HFunc("dot", "dp%tn1\t%0, %1, %2"), HFunc("dot3", "dp3\t%0, %1, %2"), HFunc("dot4", "dp4\t%0, %1, %2"), HFunc("mad", "mad\t%0, %1, %2, %3"), HFunc("fma", "mad\t%0, %1, %2, %3"), HFunc("exp2", "expp\t%0, %1"), HFunc("exp2_full", "exp\t%0, %1"), HFunc("frac", "frc\t%0, %1"), HFunc("max", "max\t%0, %1, %2"), HFunc("min", "min\t%0, %1, %2"), HFunc("log2", "logp\t%0, %1"), HFunc("log2_full", "log\t%0, %1"), HFunc("rcp", "rcp\t%0, %1"), HFunc("rsqrt", "rsq\t%0, %1"), HFunc("rdistance", "sub\t%z, %1, %2\ndp3\t%z.w, %z, %z\nrsq\t%z.w, %z.w"), HFunc("distance", "sub\t%z, %1, %2\ndp3\t%z.w, %z, %z\nrsq\t%z.w, %z.w\nrcp\t%0, %z.w"), HFunc("dst", "dst\t%0, %1"), HFunc("abs", "max\t%0, %1, -%1"), HFunc("degrees", "rcp\t%z.x, c95.x\nmul\t%0, %z.x, %1"), HFunc("step", "sge\t%0, %1, %2"), HFunc("floor", "frc\t%z.w, %1\nsub\t%0, %1, %z.w"), HFunc("trunc", "frc\t%z.w, %1\nsub\t%0, %1, %z.w"), HFunc("ceil", "frc\t%z.x, %1\nsub\t%z.x, %1, %z.x\nadd\t%0, %z.x, c95.y"), HFunc("round", "frc\t%z.x, %1\nsub\t%z.y, %1, %z.x\nslt\t%z.z, c95.z, %z.x\nadd\t%0, %z.y, %z.z"), HFunc("radians", "mul\t%0, c95.x, %1"), HFunc("lit", "mov\t%z.x, %1\nmov\t%z.y, %2\nmov\t%z.w, %3\nlit\t%0, %z"), HFunc("sign", "slt\t%z.x, c95.w, r0.x\nsub\t%z.x, %z.x, c95.z\nadd\t%0, %z.x, %z.x"), HFunc("fmod", "rcp\t%z.x, %2\nmul\t%z.x, %z.x, %1\nfrc\t%z.y, %z.x\nsub\t%z.x, %z.x, %z.y\nmul\t%z.x, %z.x, %2\nsub\t%0, %1, %z.x"), HFunc("faceforward", "dp3\t%z.x, %2, %3\nslt\t%z.x, c95.w, %z.x\nsub\t%z.x, %z.x, c95.z\nadd\t%z.x, %z.x, %z.x\nmul\t%0, -%1, %z.x"), HFunc("fresnel", "dp3\t%z.x, %1, %2\nmax\t%z.x, -%z.x, %z.x\nsub\t%z.x, c95.y, %z.x\nmul\t%z.x, %z.x, %z.x\nmul\t%z.x, %z.x, %z.x\nmul\t%0, %z.x, %z.x"), HFunc("reflect", "dp3\t%z.x, %1, %2\nadd\t%z.x, %z.x, %z.x\nmul\t%z, %z.x, %2\nsub\t%0, %1, %z"), HFunc("normalize", "dp3\t%z.a, %1, %1\nrsq\t%z.a, %z.a\nmul\t%0, %1, %z.a"), HFunc("lerp", "sub\t%z, %2, %1\nmad\t%0, %z, %3, %1"), HFunc("rlength", "dp3\t%z, %1, %1\nrsq\t%z, %z"), HFunc("length", "dp3\t%z.a, %1, %1\nrsq\t%z.a, %z.a\nrcp\t%0, %z.a"), HFunc("clamp", "min\t%z, %1, %3\nmax\t%0, %z, %2"), HFunc("saturate", "min\t%z, %1, c95.y\nmax\t%0, %z, c95.w"), HFunc("sqrt", "rsq\t%z, %1\nrcp\t%0, %z"), HFunc("RotateToWorld", "m3x%tn0\t%0, %1, c4"), HFunc("LocalToWorld", "m4x%tn0\t%0, %1, c4"), HFunc("LocalToScreen", "m4x%tn0\t%0, %1, c0"), HFunc("mul", "m%tn2x%tn0\t%0, %1, %2")]
 
 # Finds the item in list1 and retrieves the corrosponding item in list2
@@ -123,6 +137,29 @@ def HVarRegisterToVar(register):
         if v.register == register:
             return v
     return False
+
+def Int(x, default=0):
+    if x.isnumeric():
+        return int(x)
+    return default
+
+def SizeOf(tyype):
+    if tyype in ["float", "int", "bool"]:
+        return 1
+
+    return Int(tyype[-1], 4)
+
+def GetSizeFromParam(param):
+    if " " in param:
+        splt = param.split(" ")
+        while splt[0] in ["inout"]:
+            splt = splt[1:]
+
+        if len(splt) < 2:
+            return 4
+
+        return SizeOf(splt[0])
+    return 4
 
 # This function used to convert a string to a float, but that caused an edge case
 # so it adds the f, it's more like StrToFloatToStr
@@ -158,20 +195,20 @@ def AddConstant(name, value, valtype="f", pack=True, swizzle=True):
                     offset = existingvalues[:existingvalues.index(valstring)].count(",")
                     
                     if isPixelShader:
-                        if offset not in [0, 4]:
+                        if offset not in [0, 3]:
                             continue
                         
                         if (not offset) and (dimensions < 3):
                             continue
 
                     newRegister = hv.register
-                    if swizzle:
-                        newRegister = Swizzle(newRegister, dimensions)
+                    if swizzle and "." not in newRegister:
+                        newRegister = OffsetProperty(Swizzle(newRegister, dimensions), offset)
 
-                    if "constant_" not in name:
+                    if name[:len("constant_")] != "constant_":
                         hvars.append(HVar(name, newRegister, "", valtype + str(dimensions)))
 
-                    return OffsetProperty(newRegister, offset)
+                    return newRegister
 
     while len(vals) < 4:
         vals.append("%x")
@@ -244,6 +281,9 @@ def IsType(string):
     return False
 
 def IsFloat(string):
+    if not string:
+        return False
+    
     if string[0] not in "0123456789.":
         return False
 
@@ -268,7 +308,8 @@ def IsConst(line):
         for i in range(2, 5):
             for t in ["float", "int", "bool"]:
                 if t + str(i) + "(" in line:
-                    return True
+                    if all([IsFloat(item.strip()) for item in SliceWithStrings(line, "(", ")").split(",")]):
+                        return True
     return False
 
 def BreakdownMath(line):
@@ -587,19 +628,20 @@ def HandleSquareBrackets(tokens, i):
 
 
 def CheckForTooManyRegisters(sembly, registerType, description, limit=1):
-    matches = findall(f", {registerType}[0-9]+\\.?[xyzwrgba]*", sembly)
+    for line in sembly.split("\n"):
+        matches = findall(f", {registerType}[0-9]+\\.?[xyzwrgba]*", line)
 
-    if len(matches) > 1:
-        indexes = set([RemoveSwizzle(item[1:].strip()[1:]) for item in matches])
+        if len(matches) > 1:
+            indexes = set([RemoveSwizzle(item[1:].strip()[1:]) for item in matches])
 
-        if len(indexes) > limit:
-            Error(f"Can't access more than {limit} {description}{'s' if limit > 1 else ''} in a single instruction")
+            if len(indexes) > limit:
+                Error(f"Can't access more than {limit} {description}{'s' if limit > 1 else ''} in a single instruction")
 
 def CompileOperand(string, ext="", dst="", components=4):
     global unusedRegisters
 
     if dst == "":
-        dst = AllocateRegister(unusedRegisters) + (("." + "xyzw"[:components]) if ((components != 4) or IsConst(string)) else "")
+        dst = AllocateRegister(unusedRegisters) + (("." + "xyzw"[:components]) if (components != 4) else "")
         unusedRegisters += 1
 
     fullsembly = ""
@@ -682,6 +724,74 @@ def IsASingleMov(string):
 def Swizzle(register, components):
     return (register + "." + "xyzw"[:components]) if "." not in register and components < 4 else register
 
+def GetMatchingFunctions(name):
+    matchingFuncs = []
+    for hf in hfuncs:
+        if hf.name == name:
+            matchingFuncs.append(hf)
+    return matchingFuncs
+
+
+def GetMatchingFunction(name, params):
+    matchingFuncs = GetMatchingFunctions(name)
+    for hf in matchingFuncs:
+        if hf.params == params:
+            return hf
+
+    if matchingFuncs:
+        return matchingFuncs[0]
+    return None
+
+# Same as slice with strings except it'll skip nested brackets 
+def SliceBrackets(line, start, end):
+    index = line.index(start) + 1
+    return line[index:GetParEnd(line, index, start + end)]
+
+def GetMatchingFunctionFromLine(line):
+    params = [HVarNameToSize(item.strip()) for item in ArraySplit(SliceBrackets(line, "(", ")"))]
+    matchingFuncs = GetMatchingFunctions(line[:line.index("(")])
+    if matchingFuncs:
+        for hf in matchingFuncs:
+            if hf.params == params:
+                return hf
+
+        return matchingFuncs[0]
+
+    return None
+            
+
+def HVarNameToSize(name):
+    if IsConst(name):
+        if "(" in name:
+            return len(SliceWithStrings(name, "(", ")").split(","))
+        return 1
+
+    if "(" in name:
+        if name[0] == "(" and name[-1] != ")":
+            # Casting
+            return GetSizeFromParam(SliceWithStrings(name, "(", ")") + " x")
+        hf = GetMatchingFunctionFromLine(name)
+        if hf:
+            return hf.rtn
+
+    if name.startswith("1-"):
+        return HVarNameToSize(name[2:])
+
+    if HasMath(name):
+        tokens = BreakdownMath(name)
+        return HVarNameToSize(tokens[0])
+
+    if "." in name:
+        return len(name[name.index(".") + 1:])
+
+    allhvars = hvars + dhvars
+    if name in allhvars:
+        hv = allhvars[allhvars.index(name)]
+        return int(hv.type[1])
+
+    print("HVarNameToSize: Unknown name: " + Surround(name))
+    return 4
+
 # Returns a list where the first item is the destination that contains the result of the code, and the second item is the code.
 def CompileOperand_Partial(string, ext="", dst="", components=4):
     string = string.strip()
@@ -708,12 +818,26 @@ def CompileOperand_Partial(string, ext="", dst="", components=4):
             string = string[1:-1]
 
     if "(" in string:
-            for av in hfuncs:
-                if string[:string.index("(")].strip() == av.name:
+            matchingFuncs = []
+            parameters = string[string.index("(") + 1:GetParEnd(string, string.index("(") + 1)]
+            parameters = [HVarNameToSize(item.strip()) for item in ArraySplit(parameters)]
+            functionName = string[:string.index("(")].strip()
+            for hf in hfuncs:
+                if functionName == hf.name:
+                    matchingFuncs.append(hf)
+
+            if matchingFuncs:
+                # Moves the first function to the end so it can default to that one if none of them match
+                matchingFuncs = matchingFuncs[1:] + [matchingFuncs[0]]
+            
+            for index, av in enumerate(matchingFuncs):
                     dex = string.index(av.name + "(") + len(av.name) + 1
                     end = GetParEnd(string, dex)
                     inner = [item.strip() for item in ArraySplit(string[dex:end])]
                     end = av.code
+
+                    if (av.params != parameters) and (index < len(matchingFuncs) - 1 or (noDefaultOverload and len(matchingFuncs) > 1)):
+                        continue
 
                     i = 0
                     while f"%z{i}" in end:
@@ -799,6 +923,15 @@ def CompileOperand_Partial(string, ext="", dst="", components=4):
 
                         end = end.replace("%" + str(dex + 1), register)
                     return [dst, prepend + end + "\n"]
+            if matchingFuncs:
+                def ConvertToType(num):
+                    return ("float" + str(num)) if num > 1 else "float"
+                def ConvertToTypeFull(params):
+                    return str([ConvertToType(item) for item in params])[1:-1].replace('\'', '')
+                Error(f"None of the overloads for {matchingFuncs[0].name} matches the situation: {ConvertToType(components)}({ConvertToTypeFull(parameters)})")
+                print("Overload options:")
+                for m in matchingFuncs:
+                    print(f"{ConvertToType(m.rtn)}({ConvertToTypeFull(m.params)})")
 
     for op in ops:
         if op[0] in string:
@@ -978,7 +1111,7 @@ def SecondPass(script):
             adds = script[script.index("\t", tdex + 1) + 1:script.index("\n", tdex + 1)].split(",")
             adds = [item.strip() for item in adds]
             sources = muls[1:] + adds[1:]
-            if TooManyRegisters(sources, "c") or TooManyRegisters(sources, "v"):
+            if TooManyRegisters(sources, "c", 2 if isPixelShader else 1) or TooManyRegisters(sources, "v"):
                 dex = mdex + 1
                 continue
             
@@ -1053,7 +1186,6 @@ def HandleForLoop(code, start, condition, inc, name, keyword, ssemblystart):
     inc = inc.replace("++", "+= 1")
     inc = inc.replace("--", "-= 1")
     
-    global linenum
     referenced = CarefulIn(code, name)
     output = (ssemblystart + ";\n") if referenced else ""
     fullcode = CarefulReplace(code, name, keyword).replace("%keyword%", name) + ((inc + ";\n") if referenced else "")
@@ -1088,7 +1220,11 @@ def ArraySplit(string):
 
 prevMode = 0
 
-def CompileHLSL(script, localVars=-1, dst="r0", inGlobal=0):
+COMMENT_NONE = 0
+COMMENT_ONE = 1
+COMMENT_MULTI = 2
+
+def CompileHLSL(script, localVars=-1, dst="r0", addLines=True, canDiscard=True):
     global linenum, col, scope, r0, r1, typeOfExpr, hvars, constants, unusedRegisters, functionRegisters
     if localVars == -1:
         localVars = []
@@ -1096,7 +1232,7 @@ def CompileHLSL(script, localVars=-1, dst="r0", inGlobal=0):
     mode = 1
     bMeanwhile = False
     temp = 0
-    liner = 0
+    commentType = COMMENT_NONE
     output = ""
     buffer = ""
     index = 0
@@ -1106,25 +1242,30 @@ def CompileHLSL(script, localVars=-1, dst="r0", inGlobal=0):
         char = script[index]
         index += 1
 
+        if char == '\n':
+            if addLines: linenum += 1
+            col = 0
+
+        col += 1
+
         # Comments
         if mode not in [0, 2]:
-            if liner:
-                if liner == 1:
+            if commentType:
+                if commentType == COMMENT_ONE:
                     if includeComments: output += char
                     if char != '\n': continue
-                    liner = 0
+                    commentType = COMMENT_NONE
                 else:
 
                     if char == "\n":
                         if includeComments: output += "\n;"
-                        if inGlobal: linenum += 1
                     elif includeComments:
                         output += char
 
                     if temp == "*" and char == "/":
                         output = output[:output.rfind("\n") + 1]
                         output += "\n"
-                        liner = 0
+                        commentType = COMMENT_NONE
                         continue
                     else:
                         temp = char
@@ -1134,7 +1275,7 @@ def CompileHLSL(script, localVars=-1, dst="r0", inGlobal=0):
                 if buffer[-1] == '/':
                     if char == '/':
                         buffer = buffer[:-1]
-                        liner = 1
+                        commentType = COMMENT_ONE
                         if includeComments:
                             if output:
                                 if output[output.rfind("\n", 0, len(output) - 1) + 1] != ";":
@@ -1144,16 +1285,10 @@ def CompileHLSL(script, localVars=-1, dst="r0", inGlobal=0):
 
                     if char == '*':
                         buffer = buffer[:-1]
-                        liner = 2
+                        commentType = COMMENT_MULTI
                         temp = ""
                         if includeComments: output += "\n\n;"
                         continue
-
-        if char == '\n':
-            if inGlobal: linenum += 1
-            col = 0
-
-        col += 1
 
         # Checking for assembly
         if mode != 2 and buffer[-4:-1] == "asm" and buffer[-1] in "\t\n {":
@@ -1161,6 +1296,7 @@ def CompileHLSL(script, localVars=-1, dst="r0", inGlobal=0):
             prevMode = mode
             mode = 0
             while script[index] in " \n\t{":
+                if script[index] == "\n" and addLines: linenum += 1
                 index += 1
             continue
 
@@ -1173,7 +1309,8 @@ def CompileHLSL(script, localVars=-1, dst="r0", inGlobal=0):
             if char == "{": continue
 
             if output != "":
-                if (char in " \t\n") and (output[-1] == '\n'): continue
+                if (char in " \t\n") and (output[-1] == '\n'):
+                    continue
             output += char
             continue
 
@@ -1181,10 +1318,8 @@ def CompileHLSL(script, localVars=-1, dst="r0", inGlobal=0):
         elif mode == 2:
             if char == '}':
                 if not temp:
-                    inGlobal = 0
                     functionRegisters = -1
-                    hfuncs[-1].code = CompileHLSL(buffer.strip(), -1, "%0", 1).strip()
-                    inGlobal = 2
+                    hfuncs[-1].code = CompileHLSL(buffer.strip(), -1, "%0", False, False).strip()
 
                     buffer = ""
 
@@ -1280,7 +1415,7 @@ def CompileHLSL(script, localVars=-1, dst="r0", inGlobal=0):
 
                     previousScope = scope
                     scope = "For Loop"
-                    output += CompileHLSL(HandleForLoop(loopCode, statements[3], statements[1], statements[2], varName, keyword, statements[0]))
+                    output += CompileHLSL(HandleForLoop(loopCode, statements[3], statements[1], statements[2], varName, keyword, statements[0]), addLines=False, canDiscard=False)
                     linenum += script[index:closingIndex + 1].count("\n")
 
                     index = closingIndex + 1
@@ -1302,7 +1437,7 @@ def CompileHLSL(script, localVars=-1, dst="r0", inGlobal=0):
                 if " " in line:
                     # If you re-define a variable it will just treat it as an assignment
                     if line.split(" ")[1] in hvars and defType:
-                        Error("Warning: re-definition of [" + line.split(" ")[1] + "]")
+                        Error(f"Warning: re-definition of [{line.split(" ")[1]}]")
                         defType = False
                         line = line[line.index(" ") + 1:]
 
@@ -1333,7 +1468,10 @@ def CompileHLSL(script, localVars=-1, dst="r0", inGlobal=0):
                                 typeOfExpr = "Defining Function"
                                 tokens[1] = SliceWithStrings(line, " ", "(")
 
-                                hfuncs.append(HFunc(tokens[1], ""))
+                                params = [GetSizeFromParam(item.strip()) for item in SliceWithStrings(line, "(", ")").split(",")]
+                                rtnType = SizeOf(line[:line.index(" ")])
+
+                                hfuncs.append(HFunc(tokens[1], "", rtnType, params))
                                 args = [item.strip().split(" ") for item in SliceWithStrings(line, "(", ")").split(",")]
                                 scope = tokens[1]
                                 if args:
@@ -1362,6 +1500,8 @@ def CompileHLSL(script, localVars=-1, dst="r0", inGlobal=0):
                             if not r[1] and printOnNoReturnCode:
                                 r[1] = "; No need for return code.\n"
                             output += ("+" if bMeanwhile else "") + r[1]
+                            if stopOnReturn:
+                                break
                             continue
 
                     if '=' in line:
@@ -1397,7 +1537,7 @@ def CompileHLSL(script, localVars=-1, dst="r0", inGlobal=0):
                             print("Unknown Expression:", line)
 
                 # Clearing out variables that aren't referenced anymore
-                if autoDiscard and inGlobal > 1:
+                if autoDiscard and canDiscard:
                     hvindex = 0
                     while hvindex < len(hvars):
                         hv = hvars[hvindex]
@@ -1452,14 +1592,23 @@ def GetSemantic(string):
     return -1
 
 coordinateInputs = 0
+numTextures = 0
 usedSemantics = [False, False, False]
 formats = [("Pos", "position"), ("Norm", "normal"), ("Color", "color")]
 
-def MakeStreamFormat():
+def MakeStreamFormat(bPostProcess):
     f = ""
-    for sem, fmt in zip(usedSemantics, formats):
-        if sem:
-            f += fmt[0]
+
+    if IsDefined("inputStreamFormat"):
+        return "That"
+
+    if bPostProcess:
+        f = "PosprojTex" + str(numTextures)
+    else:
+        for sem, fmt in zip(usedSemantics, formats):
+            if sem:
+                f += fmt[0]
+
     if coordinateInputs:
         f += "Tex" + str(coordinateInputs)
     return f
@@ -1493,9 +1642,11 @@ def Surround(thing):
 inlineDefs = []
 
 def HandleDefines(line):
+    global vertexConstants, pixelConstants
     tempLine = line.strip().replace("\t", " ").replace("  ", " ")
     if tempLine:
         if tempLine[0] == "#" and " " in tempLine:
+            arg = tempLine[tempLine.index(" ") + 1:].strip()
             match tempLine[1:tempLine.index(" ")]:
                 case "define":
                     name = tempLine.split(" ")[1].strip()
@@ -1518,9 +1669,22 @@ def HandleDefines(line):
                     return
 
                 case "include":
-                    name = tempLine[tempLine.index(" ") + 1:][1:-1].strip()
+                    name = arg[1:-1].strip()
                     with open(filename[:filename.rfind("/") + 1] + name) as includefile:
                         inlineDefs.append((line, includefile.read()))
+                    return
+
+                case "vconstants":
+                    vertexConstants = int(arg)
+                    return
+
+                case "pconstants":
+                    pixelConstants = int(arg)
+                    return
+
+                case "python":
+                    arg = f"global {arg[:arg.index('=')].strip()}\n{arg}"
+                    exec(arg)
                     return
 
         if tempLine.split(" ")[0:2] == ["const", "string"]:
@@ -1627,9 +1791,10 @@ while stuckInLoop:
             ResetDHVars(True)
             hvars = []
             fvars = []
-            constants = 3
+            constants = pixelConstants
             coordinateInputs = 0
-            startC = 3
+            numTextures = 0
+            startC = pixelConstants
             usedSemantics = [False, False, False]
             scopeSnapshot = []
             psSnapshot = []
@@ -1657,12 +1822,6 @@ while stuckInLoop:
                     if IsDefined("ps_" + v):
                         pixelshaderversion = v.replace("_", ".") # Not only does this pre-calculate the instruction to use, but it can then be converted to a float to compare versions easily
                         break
-
-                firstshaderindex = [hlsl.index("PixelShader"), hlsl.index("VertexShader")]
-                lastshaderindex = max(firstshaderindex)
-                firstshaderindex = min(firstshaderindex)
-
-                CompileHLSL(hlsl[:firstshaderindex])
                         
                 for d in inlineDefs:
                     if "%0" in d[1]:
@@ -1694,6 +1853,7 @@ while stuckInLoop:
 
                             put = put.strip().split(" ")[-1]
                         dhvars.append(HVar(put.strip(), "t" + str(i), newType, "f4"))
+                        numTextures += 1
 
             psSnapshot = [item for item in dhvars]
 
@@ -1759,10 +1919,11 @@ while stuckInLoop:
                     for i in range(textures):
                         sfile.write("Texture Tex" + str(i) + ";\n")
 
-                    sfile.write("\nconst string inputStreamFormat = \"" + MakeStreamFormat() + "\";\n\n")
+                    sfile.write("\nconst string inputStreamFormat = \"" + MakeStreamFormat(not vertexshader) + "\";\n\n")
 
-                    sfile.write("vertexshader vSdr =\n\tdecl\n\t{\n" + decl + "\t}\n\tasm\n\t{\n")
-                    sfile.write("\t\tvs.1.1\n\n")
+                    if vertexshader:
+                        sfile.write("vertexshader vSdr =\n\tdecl\n\t{\n" + decl + "\t}\n\tasm\n\t{\n")
+                        sfile.write("\t\tvs.1.1\n\n")
 
                     if pixelshader != "":
                         scope = "Pixel Shader"
@@ -1780,8 +1941,8 @@ while stuckInLoop:
                         maxV = 2
 
                         rStatus = [False for i in range(maxR)]
-                        constants = 3
-                        startC = 3
+                        constants = pixelConstants
+                        startC = pixelConstants
                         script = pixelshader
                         with open("pixel_builtin.hlsl") as file:
                             thatthing = file.read()
@@ -1789,7 +1950,7 @@ while stuckInLoop:
                                 thatthing = HandleIfDef(thatthing, ifdef, False)
                             while (ifdef := thatthing.find("#ifndef ")) != -1:
                                 thatthing = HandleIfDef(thatthing, ifdef, True)
-                            CompileHLSL(thatthing)
+                            CompileHLSL(thatthing, addLines=False, canDiscard=False)
 
                         linenum = psLine
 
@@ -1842,13 +2003,14 @@ while stuckInLoop:
                         script = vertexshader
 
                         with open("vertex_builtin.hlsl") as file:
-                            CompileHLSL(file.read())
+                            CompileHLSL(file.read(), addLines=False, canDiscard=False)
 
                         linenum = vsLine
 
                         compiledvertexshader = CompileHLSL(vertexshader, -1, "oPos", 2)
                         seenconstants = [False for i in range(maxC)]
-                        for hvar in hvars:
+                        hvars = hvars[1:] + [hvars[0]]
+                        for hvar in reversed(hvars):
                             reg = hvar.register
                             if reg[0] == 'c':
                                 if "." in reg:
@@ -1867,7 +2029,8 @@ while stuckInLoop:
                         sfile.write(MakeDcls() + "\n")
                         sfile.write(AddTabs(compiledvertexshader, "\t\t"))
 
-                    sfile.write("\t};\n\n")
+                    if vertexshader:
+                        sfile.write("\t};\n\n")
 
                     if pixelshader != "":
                         hvars = [item for item in psSnapshot]
@@ -1907,8 +2070,8 @@ while stuckInLoop:
                     for i in range(textures):
                         sfile.write("\t\tTexture[" + str(i) + "] = <Tex" + str(i) + ">;\n")
                         
-                    sfile.write("\n\t\tVertexShader = <vSdr>;\n")
-                    sfile.write("\t\tPixelShader = <pSdr>;\n")
+                    sfile.write(f"\n\t\tVertexShader = {'<vSdr>' if vertexshader else 'null'};\n")
+                    sfile.write(f"\t\tPixelShader = {'<pSdr>' if pixelshader else 'null'};\n")
                     sfile.write("\t}\n}")
 
 
