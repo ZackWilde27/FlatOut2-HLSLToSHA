@@ -1,5 +1,5 @@
 # Zack's HLSL to FlatOut SHA
-version = "v3.0.1"
+version = "v3.0.2"
 # Am I particularly proud of this code? uhh
 
 try:
@@ -1601,7 +1601,7 @@ def MakeStreamFormat(bPostProcess):
 
     for d in inlineDefs:
         if d[0] == "inputStreamFormat":
-            return d[1]
+            return d[1][1:-1]
 
     if bPostProcess:
         f = "PosprojTex" + str(numTextures)
