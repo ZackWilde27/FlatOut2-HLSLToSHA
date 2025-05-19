@@ -1,5 +1,5 @@
 # Zack's HLSL to FlatOut SHA
-version = "v3.0.2"
+version = "v3.0.3"
 # Am I particularly proud of this code? uhh
 
 try:
@@ -1693,7 +1693,7 @@ def HandleDefines(line):
 
         if tempLine.split(" ")[0] == "string":
             name = tempLine[7:tempLine.index("=")].strip()
-            replacee = tempLine[tempLine.index("=") + 1:].strip()
+            replacee = tempLine[tempLine.index("=") + 1:-1].strip()
             inlineDefs.append((name, replacee))
 
 def SortDecl(a):

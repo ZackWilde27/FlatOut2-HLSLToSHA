@@ -17,9 +17,7 @@ float4 fma(a, b, c)
     return mad(a, b, c);
 }
 
-// The %tn1 will be replaced with the first input's number of components
-// So it'll change to a dp3 or dp4 based on the input
-// %tn0 would be replaced with the output's number of components, and so on.
+
 float dot(float4 x, float4 y)
 {
     asm {
@@ -406,6 +404,8 @@ float saturate(float x)
     return clamp(x, 0.0f, 1.0f);
 }
 
+// The %tn2 will be replaced with the second input's number of components
+// meanwhile the %tn0 will be replaced with the output's number of components
 float4 mul(x, y)
 {
     asm {
