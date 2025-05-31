@@ -165,12 +165,80 @@ float4 dst(float4 x, float4 y)
     }
 }
 
-float4 abs(x)
-{
-    asm {
-        max	%0, %1, -%1
+#ifdef float(shaderModel) < 2.0
+
+    float abs(float x)
+    {
+        asm {
+            max	%0, %1, -%1
+        }
     }
-}
+
+    // Calculated as ((y - x) * s) + x
+    float4 lerp(x, y, float s)
+    {
+        asm {
+            sub	%z, %2, %1
+            mad	%0, %z, %3, %1
+        }
+    }
+
+    // Calculated as ((x >= 0) ? 1 : 0) - 0.5 * 2
+    float sign(float x)
+    {
+        "%z.x" = x >= 0 ?;
+        "%z.x" -= 0.5f;
+        return "%z.x" + "%z.x";
+    }
+
+    // Calculated as v / length(v)
+    float3 normalize(float v)
+    {
+        asm {
+            dp3	%z0.x, %1, %1
+            rsq	%z0.x, %z0.x
+            mul	%0, %1, %z0.x
+        }
+    }
+
+#else
+
+    float abs(float x)
+    {
+        asm {
+            abs %0, %1
+        }
+    }
+
+    float4 lerp(x, y, float s)
+    {
+        asm {
+            lrp %0, %3, %2, %1
+        }
+    }
+
+    float4 pow(x, y)
+    {
+        asm {
+            pow %0, %1, %2
+        }
+    }
+
+    float sign(float x)
+    {
+        asm {
+            sgn %0, %1
+        }
+    }
+
+    float3 normalize(float3 x)
+    {
+        asm {
+            nrm %0, %1
+        }
+    }
+
+#endif
 
 float step(float y, float x)
 {
@@ -233,10 +301,10 @@ float4 sqrt(float4 x)
 float distance(float3 x, float3 y)
 {
     asm {
-        sub	%z, %1, %2
-        dp3	%z.w, %z, %z
-        rsq	%z.w, %z.w
-        rcp	%0, %z.w
+        sub	%z0, %1, %2
+        dp3	%z.x, %z1, %z1
+        rsq	%z.x, %z.x
+        rcp	%0, %z.x
     }
 }
 
@@ -259,21 +327,20 @@ float distance(float x, float y)
     }
 }
 
+
 // Calculated as x / 0.0174533f
 float degrees(float x)
 {
-    asm {
-        rcp	%z.x, c95.x
-        mul	%0, %z.x, %1
-    }
+	"%z" = rcp(0.0174533f);
+	return "%z" * x;
 }
 
 // Calculated as x - frac(x)
 float floor(float x)
 {
     asm {
-        frc	%z.w, %1
-        sub	%0, %1, %z.w
+        frc	%z, %1
+        sub	%0, %1, %z
     }
 }
 
@@ -297,10 +364,10 @@ float ceil(float x)
 float round(float x)
 {
     asm {
-        frc	%z.x, %1
-        sub	%z.y, %1, %z.x
-        sge	%z.z, %z.x, c95.z
-        add	%0, %z.y, %z.z
+        frc	%z0.x, %1
+        sub	%z0.y, %1, %z0.x
+        sge	%z0.z, %z0.x, c95.z
+        add	%0, %z0.y, %z0.z
     }
 }
 
@@ -314,26 +381,16 @@ float4 lit(float n_dot_l, float n_dot_h, float m)
     }
 }
 
-// Calculated as ((x >= 0) ? 1 : 0) - 0.5 * 2
-float sign(float x)
-{
-    asm {
-        slt	%z.x, c95.w, r0.x
-        sub	%z.x, %z.x, c95.z
-        add	%0, %z.x, %z.x
-    }
-}
-
 // Calculated as x - (floor(x / y) * y)
 float fmod(float x, float y)
 {
     asm {
-        rcp	%z.x, %2
-        mul	%z.x, %z.x, %1
-        frc	%z.y, %z.x
-        sub	%z.x, %z.x, %z.y
-        mul	%z.x, %z.x, %2
-        sub	%0, %1, %z.x
+        rcp	%z0.x, %2
+        mul	%z0.x, %z0.x, %1
+        frc	%z0.y, %z0.x
+        sub	%z0.x, %z0.x, %z0.y
+        mul	%z0.x, %z0.x, %2
+        sub	%0, %1, %z0.x
     }
 }
 
@@ -361,37 +418,17 @@ float3 reflect(float3 i, float3 n)
     }
 }
 
-// Calculated as v / length(v)
-float3 normalize(float v)
-{
-    asm {
-        dp3	%z.a, %1, %1
-        rsq	%z.a, %z.a
-        mul	%0, %1, %z.a
-    }
-}
-
-// Calculated as ((y - x) * s) + x
-float4 lerp(x, y, float s)
-{
-    asm {
-        sub	%z, %2, %1
-        mad	%0, %z, %3, %1
-    }
-}
-
-
 // Calculated as sqrt(dot(value, value))
 float length(float3 value)
 {
     asm {
-        dp3	%z.a, %1, %1
-        rsq	%z.a, %z.a
-        rcp	%0, %z.a
+        dp3	%z0.x, %1, %1
+        rsq	%z0.x, %z0.x
+        rcp	%0, %z0.x
     }
 }
 
-float clamp(float x, float min, float max)
+float4 clamp(x, min, max)
 {
     asm {
         min	%z, %1, %3
@@ -417,12 +454,12 @@ float4 mul(x, y)
 float smoothstep(float mn, float mx, float x)
 {
     asm {
-        sub	%z.x, %2, %1
-        rcp	%z.x, %z.x
-        sub	%z.y, %3, %1
-        mul	%z.y, %z.y, %z.x
-        min	%z.y, %z.y, c95.y
-        max	%0, %z.y, c95.w
+        sub	%z0.x, %2, %1
+        rcp	%z0.x, %z0.x
+        sub	%z0.y, %3, %1
+        mul	%z0.y, %z0.y, %z0.x
+        min	%z0.y, %z0.y, c95.y
+        max	%0, %z0.y, c95.w
     }
 }
 
