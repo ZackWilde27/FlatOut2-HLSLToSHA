@@ -1,5 +1,5 @@
 # Zack's HLSL to FlatOut SHA
-version = "v3.1"
+version = "v3.1.1"
 # Am I particularly proud of this code? uhh
 
 try:
@@ -2318,7 +2318,7 @@ while stuckInLoop:
                             numTexcoords = 0
                             for hv in hvars + dhvars:
                                 if hv.register and hv.register[0] == "o" and hv.register[1:] != "0":
-                                    sfile.write(f"\t\tdcl_texcoord{numTexcoords}\tv{int(hv.register[1:]) - 1}{Swizzle('', int(hv.type[1]))}\t; {hv.name}\n")
+                                    sfile.write(f"\t\tdcl_texcoord{numTexcoords}\tv{int(hv.register[1:]) - 1}\t; {hv.name}\n")
                                     numTexcoords += 1
                             sfile.write("\n")
                         sfile.write(defconstantbuffer)
