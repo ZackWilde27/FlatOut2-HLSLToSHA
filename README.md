@@ -994,7 +994,7 @@ samplerCUBE lighting;
 #define FRESNEL AMBIENT.a
 #define BLEND EXTRA.a
 
-float4 PixelShader(float2 uv2D, float3 uvNormal, float3 uvReflection, float4 AMBIENT, float4 EXTRA)
+float4 PixelShader(float2 uv2D, float4 uvNormal, float4 uvReflection, float4 AMBIENT, float4 EXTRA)
 {
     float4 col = lerp(tex2D(colour, uv2D), tex2D(dirt, uv2D), BLEND);
 
