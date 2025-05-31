@@ -1,5 +1,5 @@
-### The future of the compiler
-I found out that the game supports up to shader model 3, so now my recommendation is to write it [the conventional way](https://github.com/ZackWilde27/FlatOut2-HLSLToSHA/wiki/Putting-HLSL-in-the-shader-file) to get the most features.
+### Note
+The game supports actual HLSL right out of the box, [I made a page going over it](https://github.com/ZackWilde27/FlatOut2-HLSLToSHA/wiki/Putting-HLSL-in-the-shader-file), so my compiler serves as a much lower level and easier to write language
 
 The only issue is that previewing the shader in the validator doesn't work with 3.0 (It looks matrix related, but I don't know the why)
 
@@ -46,6 +46,8 @@ Table of Contents
 	- [Transforming](https://github.com/ZackWilde27/FlatOut2-HLSLToSHA/tree/main?tab=readme-ov-file#transforming)
 	- [Inline Ifs](https://github.com/ZackWilde27/FlatOut2-HLSLToSHA/tree/main?tab=readme-ov-file#inline-ifs-1)
 	- [Swizzling Vectors](https://github.com/ZackWilde27/FlatOut2-HLSLToSHA/tree/main?tab=readme-ov-file#swizzling-vectors-1)
+
+- [Shader Model 3](https://github.com/ZackWilde27/FlatOut2-HLSLToSHA/main/README.md#shader-model-3)
 
 - [Troubleshooting](https://github.com/ZackWilde27/FlatOut2-HLSLToSHA/blob/main/README.md#troubleshooting)
 
@@ -848,6 +850,172 @@ PixelShader(colour, specular, dirt, lighting)
 }
 ```
 
+
+<br><br>
+
+# Shader Model 3
+
+The compiler can switch between models 1 and 3 with a macro:
+```hlsl
+#define ps_3_0
+```
+
+3.0 has way more features, and as a result the syntax for the pixel shader had to resemble actual HLSL a bit more, for better or worse.
+```hlsl
+/*
+Instead of:
+float4 PixelShader(float4 colour, float4 specular, float4 dirt, float4 lighting)
+{
+	return colour;
+}
+*/
+
+// It's now
+sampler2D colour;
+samplerCUBE specular;
+sampler2D dirt;
+samplerCUBE lighting;
+
+float4 PixelShader()
+{
+	// You can sample textures more than once with whatever coordinates
+	return tex2D(colour, myUV);
+}
+```
+
+AMBIENT, FRESNEL, BLEND, and EXTRA are gone, since you can pass whatever data between the shaders
+```hlsl
+// Parameters for the pixel shader can be written to in the vertex shader
+// You can have 10 of them
+float4 VertexShader()
+{
+	that = 1.0f;
+}
+
+float4 PixelShader(float4 that)
+{
+	return that;
+}
+```
+
+The vertex shader's intrinsics changed a bit:
+- abs() ```built-in now```
+- lerp() ```built-in now```
+- normalize() ```built-in now```
+- pow()
+- sign() ```built-in now```
+- cross() ```built-in now```
+
+The pixel shader has many new instructions, it's about as powerful as the vertex shader now
+- abs()
+- ceil()*
+- clamp()*
+- cos()
+- cross()
+- degrees()
+- distance()
+- dot()
+- exp2()
+- floor()*
+- fmod()*
+- frac()
+- length()*
+- lerp()
+- log2()
+- mad()
+- max()
+- min()
+- normalize()
+- pow()
+- radians()*
+- reflect()*
+- rsqrt()
+- rcp()
+- saturate()*
+- sin()
+- sincos()
+- smoothstep()*
+- sqrt()*
+- trunc()*
+
+*These functions use workarounds that are multiple instructions long
+
+<br>
+
+Here are some of the smaller upgrades:
+- You can now have up to 32 variables in both the pixel and vertex shader
+- You can have a whopping 224 constants in the pixel shader, the vertex shader can have 256
+- No more swizzle restrictions in the pixel shader, the compiler will pack constants like usual
+
+<br>
+
+So in summary I can re-write the car body shader like this:
+```hlsl
+#define ps_3_0
+
+float4 VertexShader(float3 pos : POSITION, float3 nrm : NORMAL, float4 diff : COLOR, float2 uvs : TEXCOORD)
+{
+    uv2D = uvs.xy;
+
+    float4 worldNormal;
+    worldNormal.xyz = RotateToWorld(nrm);
+    worldNormal.a = 1.0f;
+
+    // The lighting cubemap can just be given the world normal
+    uvNormal = worldNormal;
+
+    // Calculate the reflection vector for the specular cubemap
+    float3 worldPos = LocalToWorld(pos);
+    float3 incident = normalize(worldPos - CAMERA);
+    uvReflection = reflect(incident, worldNormal);
+
+    // The blend factor for the car body comes from the COLOR input
+    BLEND = diff;
+
+    // Fresnel
+    float4 f;
+    f.x = abs(dot(incident, (float3)worldNormal));
+    f.x = 1.0f - f.x;
+    f.y = pow(f.x, 4.0f);
+    FRESNEL = mad(f.y, 0.5f, 0.5f);
+
+    float3 inAmbient;
+    inAmbient.x = sqrt(dot(worldNormal, PLANEX));
+    inAmbient.y = sqrt(dot(worldNormal, PLANEY));
+    inAmbient.z = sqrt(dot(worldNormal, PLANEZ));
+
+    AMBIENT = inAmbient;
+
+    return LocalToScreen(pos);
+}
+
+
+sampler2D colour;
+samplerCUBE specular;
+sampler2D dirt;
+samplerCUBE lighting;
+
+#define FRESNEL AMBIENT.a
+#define BLEND EXTRA.a
+
+float4 PixelShader(float2 uv2D, float3 uvNormal, float3 uvReflection, float4 AMBIENT, float4 EXTRA)
+{
+    float4 col = lerp(tex2D(colour, uv2D), tex2D(dirt, uv2D), BLEND);
+
+    // Desaturate by getting the greyscale version and lerping towards it
+    float4 greyscale = dot(col, HALF) * 2.0f;
+
+    // There's a new limitation where the destination of a lerp can't be one of the parameters
+    float4 newCol = lerp(greyscale, col, 0.9f);
+
+    float4 lightSample = texCUBE(lighting, uvNormal);
+    float4 light = lightSample.a * SHADOW;
+    light = saturate(mad(AMBIENT, 0.6f, light));
+
+    col = lerp(newCol, texCUBE(specular, uvReflection), FRESNEL);
+    return col * light;
+}
+```
 
 <br><br>
 
