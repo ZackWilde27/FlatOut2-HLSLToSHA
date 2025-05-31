@@ -801,7 +801,7 @@ float4 VertexShader(float3 pos : POSITION, float3 nrm : NORMAL, float4 diff : CO
 
     // Fresnel
     float4 f;
-    f.x = abs(dot(incident, worldNormal));
+    f.x = abs(dot(incident, (float3)worldNormal));
     f.x = 1.0f - f.x;
     f.y = f.x * f.x * f.x * f.x;
     FRESNEL = mad(f.y, 0.5f, 0.5f);
@@ -946,6 +946,12 @@ Here are some of the smaller upgrades:
 
 <br>
 
+A couple features no longer exist in shader model 3:
+- There are no instruction modifiers anymore, x2, x4, and d2 have been removed, while saturate has to use a workaround
+- ```meanwhile``` can't be used anymore
+
+<br>
+
 So in summary I can re-write the car body shader like this:
 ```hlsl
 #define ps_3_0
@@ -995,7 +1001,7 @@ samplerCUBE lighting;
 #define FRESNEL AMBIENT.a
 #define BLEND EXTRA.a
 
-float4 PixelShader(float2 uv2D, float4 uvNormal, float4 uvReflection, float4 AMBIENT, float4 EXTRA)
+float4 PixelShader(float2 uv2D, float3 uvNormal, float3 uvReflection, float4 AMBIENT, float4 EXTRA)
 {
     float4 col = lerp(tex2D(colour, uv2D), tex2D(dirt, uv2D), BLEND);
 
