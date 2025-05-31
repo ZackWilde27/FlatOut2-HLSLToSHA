@@ -43,7 +43,7 @@ Table of Contents
 	- [Inline Ifs](https://github.com/ZackWilde27/FlatOut2-HLSLToSHA/tree/main?tab=readme-ov-file#inline-ifs-1)
 	- [Swizzling Vectors](https://github.com/ZackWilde27/FlatOut2-HLSLToSHA/tree/main?tab=readme-ov-file#swizzling-vectors-1)
 
-- [Shader Model 3](https://github.com/ZackWilde27/FlatOut2-HLSLToSHA/main/README.md#shader-model-3)
+- [Shader Model 3](https://github.com/ZackWilde27/FlatOut2-HLSLToSHA/tree/main?tab=readme-ov-file#shader-model-3)
 
 - [Troubleshooting](https://github.com/ZackWilde27/FlatOut2-HLSLToSHA/blob/main/README.md#troubleshooting)
 
