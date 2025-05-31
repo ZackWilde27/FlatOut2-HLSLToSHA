@@ -1,9 +1,5 @@
 ### Note
-The game supports actual HLSL right out of the box, [I made a page going over it](https://github.com/ZackWilde27/FlatOut2-HLSLToSHA/wiki/Putting-HLSL-in-the-shader-file), so my compiler serves as a much lower level and easier to write language
-
-The only issue is that previewing the shader in the validator doesn't work with 3.0 (It looks matrix related, but I don't know the why)
-
-The plan is to eventually upgrade, but I want to figure out the other shaders before tackling that (and also try to iron out all the bugs).
+The game supports HLSL right out of the box, [I made a page going over it](https://github.com/ZackWilde27/FlatOut2-HLSLToSHA/wiki/Putting-HLSL-in-the-shader-file), so if you want actual HLSL, I thought I'd mention it right off the bat
 
 <br>
 
