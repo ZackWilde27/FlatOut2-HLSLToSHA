@@ -604,6 +604,7 @@ In the vertex shader, the compiler will [automatically pack constants together](
 
 ### Keywords
 - CAMERA : The position of the camera in world space
+- CAMDIR : The direction the camera is facing, in world space
 - TIME : The amount of time since the race started
 - PLANEX : The ambient x-plane's normal, in world space
 - PLANEY : The ambient y-plane's normal, in world space
