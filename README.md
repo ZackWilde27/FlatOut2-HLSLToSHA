@@ -988,7 +988,7 @@ float4 VertexShader(float3 pos : POSITION, float3 nrm : NORMAL, float4 diff : CO
     inAmbient.y = sqrt(dot(worldNormal, PLANEY));
     inAmbient.z = sqrt(dot(worldNormal, PLANEZ));
 
-    AMBIENT = inAmbient;
+    AMBIENT.rgb = inAmbient;
 
     return LocalToScreen(pos);
 }
