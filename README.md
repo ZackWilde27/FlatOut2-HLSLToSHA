@@ -121,6 +121,11 @@ float4 PixelShader(texcoord colour, texkill specular) {}
 // texkill means that if any of its UV coordinates are less than 0, don't render this pixel
 ```
 
+If the instruction takes parameters, it can be written in function form
+```hlsl
+float4 PixelShader(float4 tex0, texreg2ar(tex0) tex1) {}
+```
+
 
 <br>
 
@@ -858,15 +863,14 @@ The compiler can switch between models 1 and 3 with a macro:
 #define ps_3_0
 ```
 
-3.0 has way more features, and as a result the syntax for the pixel shader had to resemble actual HLSL a bit more, for better or worse.
+3.0 has way more features, and as a result the syntax for the pixel shader has to resemble actual HLSL a bit more, for better or worse.
 ```hlsl
-/*
-Instead of:
+// Instead of:
 float4 PixelShader(float4 colour, float4 specular, float4 dirt, float4 lighting)
 {
 	return colour;
 }
-*/
+
 
 // It's now
 sampler2D colour;
@@ -968,7 +972,6 @@ float4 VertexShader(float3 pos : POSITION, float3 nrm : NORMAL, float4 diff : CO
     // The lighting cubemap can just be given the world normal
     uvNormal = worldNormal;
 
-    // Calculate the reflection vector for the specular cubemap
     psPos = LocalToWorld(pos);
     camPos = CAMERA;
 
@@ -1001,8 +1004,7 @@ float4 PixelShader(float2 uv2D, float3 uvNormal, float3 psPos, float3 camPos, fl
     float3 reflection = reflect(incident, uvNormal);
 
     // May as well do the fresnel here too while I'm at it
-    float f;
-    f = abs(dot(incident, uvNormal));
+    float f = abs(dot(incident, uvNormal));
     f = 1.0f - f;
     f = pow(f, 4.0f);
     f = mad(f, 0.6f, 0.3f);
