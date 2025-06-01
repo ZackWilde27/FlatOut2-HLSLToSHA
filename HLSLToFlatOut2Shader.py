@@ -1,5 +1,5 @@
 # Zack's HLSL to FlatOut SHA
-version = "v3.1.2"
+version = "v3.1.3"
 # Am I particularly proud of this code? uhh
 
 try:
@@ -124,7 +124,7 @@ def Error(message):
     print("Error in", scope, "line", linenum, "(" + typeOfExpr + "):", message)
 
 # The previous explanation was outdated, I forgot I changed it. I really need to rename everything.
-dhvars = [HVar("SHADOW", "c2", "", "f4"), HVar("AMBIENT", "v0", "", "f3"), HVar("FRESNEL", "v0.a", "", "f1", 3), HVar("BLEND", "v1.a", "", "f1", 3), HVar("%split%", "", "", "")]
+dhvars = []#[HVar("SHADOW", "c2", "", "f4"), HVar("AMBIENT", "v0", "", "f3"), HVar("FRESNEL", "v0.a", "", "f1", 3), HVar("BLEND", "v1.a", "", "f1", 3), HVar("%split%", "", "", "")]
 hvars = []
 fvars = []
 hfuncs = []
@@ -2015,7 +2015,6 @@ while stuckInLoop:
             mtime = getmtime(filename)
             isPixelShader = True
             dhvars = [HVar("%split%", "", "", "")]#[HVar("SHADOW", "c2", "", "f4"), HVar("AMBIENT", "v0", "", "f3"), HVar("FRESNEL", "v0.a", "", "f1"), HVar("BLEND", "v1.a", "", "f1"), HVar("%split%", "", "", "")]
-            ResetDHVars(True)
             hvars = []
             fvars = []
             constants = pixelConstants
@@ -2049,6 +2048,8 @@ while stuckInLoop:
                     if IsDefined("ps_" + v):
                         shaderModel = v.replace("_", ".") # Not only does this pre-calculate the instruction to use, but it can then be converted to a float to compare versions easily
                         break
+
+                ResetDHVars(True)
                         
                 for d in inlineDefs:
                     if "%0" in d[1]:
