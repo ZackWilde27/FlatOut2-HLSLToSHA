@@ -310,22 +310,24 @@ float3 reflect(float3 i, float3 n)
 	float sin(float x)
 	{
 		asm {
-			sincos	%z1.y, %1
-			mov	%0, %z1.y
+			sincos	%z0.y, %1
+			mov	%0, %z0.y
 		}
 	}
 
 	float cos(float x)
 	{
 		asm {
-			sincos	%z1.x, %1
-			mov	%0, %z1.x
+			sincos	%z0.x, %1
+			mov	%0, %z0.x
 		}
 	}
 
 	float2 sincos(float x)
 	{
-		sincos	%0, %1
+		asm {
+			sincos	%0, %1
+		}
 	}
 
 	float3 cross(float3 x, float3 y)
