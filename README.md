@@ -1,5 +1,5 @@
 ### Note
-The game supports HLSL right out of the box, [I made a page going over it](https://github.com/ZackWilde27/FlatOut2-HLSLToSHA/wiki/Putting-HLSL-in-the-shader-file), so if you want actual HLSL, I thought I'd mention it right off the bat
+The game supports HLSL right out of the box, [I made a page going over it](https://github.com/ZackWilde27/FlatOut2-HLSLToSHA/wiki/Putting-HLSL-in-the-shader-file), so if you want the real thing, I thought I'd mention it right off the bat
 
 <br>
 
@@ -186,7 +186,7 @@ Technique T0
 
 ### Variables
 
-My compiler (and the base game) uses Shader Model 1, which is extremely basic so the HLSL has some quirks.
+My compiler and the game uses Shader Model 1 by default, which is extremely basic so the HLSL has some quirks.
 
 There's only 2 registers that can be both read and written to, so you are limited to 2 variables at one time.
 ```hlsl
@@ -247,9 +247,10 @@ The supported intrinsic functions are as follows:
 - lerp()
 - mad()
 - normalize()*
+- reflect()*
 - saturate()
 
-*This function uses a work-around that is multiple instructions long, so it's not as efficient as the other ones
+*These functions use work-arounds that are multiple instructions long, so they aren't as efficient as the other ones
 
 For example:
 ```hlsl
@@ -947,7 +948,7 @@ Here are some of the smaller upgrades:
 <br>
 
 A couple features no longer exist in shader model 3:
-- There are no instruction modifiers anymore, x2, x4, and d2 have been removed, while saturate has to use a workaround
+- There are no instruction modifiers anymore, x2, x4, and d2 can't be used, while saturate uses a workaround
 - ```meanwhile``` can't be used anymore
 
 <br>
@@ -1010,12 +1011,12 @@ float4 PixelShader(float2 uv2D, float3 uvNormal, float3 uvReflection, float4 AMB
 
     // There's a new limitation where the destination of a lerp can't be one of the parameters
     float4 newCol = lerp(greyscale, col, 0.9f);
+    col = lerp(newCol, texCUBE(specular, uvReflection), FRESNEL);
 
-    float4 lightSample = texCUBE(lighting, uvNormal);
-    float4 light = lightSample.a * SHADOW;
+    float4 light = texCUBE(lighting, uvNormal);
+    light = light.a * SHADOW;
     light = saturate(mad(AMBIENT, 0.6f, light));
 
-    col = lerp(newCol, texCUBE(specular, uvReflection), FRESNEL);
     return col * light;
 }
 ```
