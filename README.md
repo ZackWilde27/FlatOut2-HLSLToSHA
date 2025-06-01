@@ -798,14 +798,14 @@ float4 VertexShader(float3 pos : POSITION, float3 nrm : NORMAL, float4 diff : CO
     specular.xyz = reflect(incident, worldNormal);
 
     // The blend factor for the car body comes from the COLOR input
-    BLEND = diff;
+    BLEND = diff.a;
 
     // Fresnel
     float4 f;
     f.x = abs(dot(incident, (float3)worldNormal));
     f.x = 1.0f - f.x;
     f.y = f.x * f.x * f.x * f.x;
-    FRESNEL = mad(f.y, 0.5f, 0.5f);
+    FRESNEL = mad(f.y, 0.6f, 0.3f);
 
     float3 inAmbient;
     inAmbient.x = sqrt(dot(worldNormal, PLANEX));
@@ -969,19 +969,11 @@ float4 VertexShader(float3 pos : POSITION, float3 nrm : NORMAL, float4 diff : CO
     uvNormal = worldNormal;
 
     // Calculate the reflection vector for the specular cubemap
-    float3 worldPos = LocalToWorld(pos);
-    float3 incident = normalize(worldPos - CAMERA);
-    uvReflection = reflect(incident, worldNormal);
+    psPos = LocalToWorld(pos);
+    camPos = CAMERA;
 
     // The blend factor for the car body comes from the COLOR input
-    BLEND = diff;
-
-    // Fresnel
-    float4 f;
-    f.x = abs(dot(incident, (float3)worldNormal));
-    f.x = 1.0f - f.x;
-    f.y = pow(f.x, 4.0f);
-    FRESNEL = mad(f.y, 0.5f, 0.5f);
+    BLEND = diff.a;
 
     float3 inAmbient;
     inAmbient.x = sqrt(dot(worldNormal, PLANEX));
@@ -999,23 +991,34 @@ samplerCUBE specular;
 sampler2D dirt;
 samplerCUBE lighting;
 
-#define FRESNEL AMBIENT.a
-#define BLEND EXTRA.a
+#define BLEND AMBIENT.a
 
-float4 PixelShader(float2 uv2D, float3 uvNormal, float3 uvReflection, float4 AMBIENT, float4 EXTRA)
+float4 PixelShader(float2 uv2D, float3 uvNormal, float3 psPos, float3 camPos, float4 AMBIENT)
 {
-    float4 col = lerp(tex2D(colour, uv2D), tex2D(dirt, uv2D), BLEND);
+    // Calculate the reflection per-pixel for more accuracy
+    float3 worldPos = psPos;
+    float3 incident = normalize(worldPos - camPos);
+    float3 reflection = reflect(incident, uvNormal);
+
+    // May as well do the fresnel here too while I'm at it
+    float f;
+    f = abs(dot(incident, uvNormal));
+    f = 1.0f - f;
+    f = pow(f, 4.0f);
+    f = mad(f, 0.6f, 0.3f);
+
+    float3 col = lerp(tex2D(colour, uv2D), tex2D(dirt, uv2D), BLEND);
 
     // Desaturate by getting the greyscale version and lerping towards it
-    float4 greyscale = dot(col, HALF) * 2.0f;
+    float greyscale = dot(col, HALF) * 1.5f;
 
     // There's a new limitation where the destination of a lerp can't be one of the parameters
-    float4 newCol = lerp(greyscale, col, 0.9f);
-    col = lerp(newCol, texCUBE(specular, uvReflection), FRESNEL);
+    float3 newCol = lerp(greyscale, col, 0.9f);
+    col = lerp(newCol, texCUBE(specular, reflection), f);
 
     float4 light = texCUBE(lighting, uvNormal);
-    light = light.a * SHADOW;
-    light = saturate(mad(AMBIENT, 0.6f, light));
+    light.rgb = light.a * SHADOW;
+    light = saturate(mad(AMBIENT, 0.6f, light.rgb));
 
     return col * light;
 }
