@@ -1,5 +1,5 @@
 # Zack's HLSL to FlatOut SHA
-version = "v3.1.1"
+version = "v3.1.2"
 # Am I particularly proud of this code? uhh
 
 try:
@@ -377,8 +377,8 @@ def BreakdownMath(line):
 
             if 0 < i < len(tokens):
                 if IsConst(tokens[i + 1]) and StrToFloat(tokens[i + 1]) == "0.5f":
-                    if (i < len(tokens) - 2) and tokens[i + 2] == "*" and IsConst(tokes[i + 3]) and StrToFloat(tokens[i + 3]) == "2.0f":
-                        tokes = tokens[:i - 1] + ["\"" + HVarNameToRegister(tokens[i - 1]) + "_bx2\""] + tokens[i + 4:]
+                    if (i < len(tokens) - 2) and tokens[i + 2] == "*" and IsConst(tokens[i + 3]) and StrToFloat(tokens[i + 3]) == "2.0f":
+                        tokens = tokens[:i - 1] + ["\"" + HVarNameToRegister(tokens[i - 1]) + "_bx2\""] + tokens[i + 4:]
                     else:
                         tokens = tokens[:i - 1] + ["\"" + HVarNameToRegister(tokens[i - 1]) + "_bias\""] + tokens[i + 2:]
             i += 1
@@ -392,7 +392,7 @@ def BreakdownMath(line):
                 except ValueError:
                     break
 
-                if tokes[i + 1] in ["2", "4"]:
+                if tokens[i + 1] in ["2", "4"]:
                     tokens[i - 1] = "".join(tokens[i - 1:i + 2])
                     tokens = tokens[:i] + tokens[i + 2:]
 
@@ -409,12 +409,12 @@ def BreakdownMath(line):
             if token == "1":
                 if i < (len(tokens) - 1):
                     if tokens[i + 1] == "-":
-                        tokes[i] = "\"1-" + HVarNameToRegister(tokens[i + 2], linenum) + "\""
-                        tokes = tokens[:i + 1] + tokens[i + 3:]
+                        tokens[i] = "\"1-" + HVarNameToRegister(tokens[i + 2], linenum) + "\""
+                        tokens = tokens[:i + 1] + tokens[i + 3:]
                         continue
 
         if token[0] == "(" and token[-1] == ")" and not HasMath(token):
-            tokes[i] = token[1:-1]
+            tokens[i] = token[1:-1]
             token = tokens[i]
 
         if IsConst(token):
@@ -427,7 +427,7 @@ def BreakdownMath(line):
                     pass
                     
                 if allConst and IsConst(tokens[i + 2]):
-                    tokens = tokes[:i] + [str(eval(' '.join([StrToFloat(tokens[i])[:-1], tokens[i+1], StrToFloat(tokens[i+2])[:-1]]))) + "f"] + tokens[i + 3:]
+                    tokens = tokens[:i] + [str(eval(' '.join([StrToFloat(tokens[i])[:-1], tokens[i+1], StrToFloat(tokens[i+2])[:-1]]))) + "f"] + tokens[i + 3:]
                     continue
 
             tokens[i] = "\"" + AddConstant("constant_" + str(constants), token, swizzle=True) + "\""
