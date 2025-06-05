@@ -900,6 +900,21 @@ float4 PixelShader(float4 that)
 }
 ```
 
+<br>
+
+Some of the smaller upgrades:
+- You can now have up to 32 variables in both the pixel and vertex shader
+- You can have a whopping 224 constants in the pixel shader, the vertex shader can have 256
+- No more swizzle restrictions in the pixel shader, the compiler will pack constants like usual
+
+A couple features no longer exist in shader model 3:
+- There are no instruction modifiers anymore, x2, x4, and d2 can't be used, while saturate uses a workaround
+- ```meanwhile``` can't be used anymore
+
+<br>
+
+## 3.0 Intrinsic Functions
+
 The vertex shader's intrinsics changed a bit:
 - abs() ```built-in now```
 - lerp() ```built-in now```
@@ -944,18 +959,73 @@ The pixel shader has many new instructions, it's about as powerful as the vertex
 
 <br>
 
-Here are some of the smaller upgrades:
-- You can now have up to 32 variables in both the pixel and vertex shader
-- You can have a whopping 224 constants in the pixel shader, the vertex shader can have 256
-- No more swizzle restrictions in the pixel shader, the compiler will pack constants like usual
+## 3.0 Ifs
+
+Ifs are now possible with the new shader model
+```hlsl
+float posX = pos.x;
+
+if (posX > 0.0f)
+    posX = -posX;
+
+```
+
+It'd be much shorter to tell you what it *can't* do:
+- There's no ```else if```
+- No ! operator (yet at least)
+- You can't use ```return``` in the if, that's a limitation with the assembly
+- While you can do && and ||, it's not very efficient at all, since there's no jump instruction
 
 <br>
 
-A couple features no longer exist in shader model 3:
-- There are no instruction modifiers anymore, x2, x4, and d2 can't be used, while saturate uses a workaround
-- ```meanwhile``` can't be used anymore
+## 3.0 Functions
+
+Shader model 3 supports call and return, so you can now mark a function as ```static``` to put it in the assembly
+```hlsl
+static float4 myFunction()
+{
+    //...
+}
+```
+
+There is one problem, static functions tend to be less efficient, since the parameters and return value take up registers, and need to be moved to and from when calling
+```hlsl
+float4 col = tex2D(colour, uv2D);
+
+float4 myFunction(float4 x)
+{
+    return x * x;
+}
+
+return myFunction(col);
+
+// The inline version results in this
+// mul    oC0, r0, r0
+
+// The static version balloons that to:
+// mov    r30, r0 ; Put 'col' in the register for that parameter
+// call    l0
+// mov    oC0, r31 ; Transfer the return value to the actual destination
+// ret
+//
+// ; myFunction
+// label l0
+// mul    r31, r30, r30
+// ret
+
+```
+
+There is a new compiler setting, ```inlinePreferred``` which if False, will make all functions static unless marked with ```inline```
+```hlsl
+inline float4 myFunction(float4 x)
+{
+
+}
+```
 
 <br>
+
+## 3.0 Summary
 
 So in summary I can re-write the car body shader like this:
 ```hlsl
