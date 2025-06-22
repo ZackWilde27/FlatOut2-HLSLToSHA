@@ -437,12 +437,69 @@ float3 reflect(float3 i, float3 n)
 		}
 	}
 
+	float4 tex2Dbias(s, float4 t)
+	{
+		asm {
+			texldb	%0, %2, %1
+		}
+	}
+
+	float4 tex2Dbias(s, float4 t)
+	{
+		asm {
+			texldd	%0, %2, %1
+		}
+	}
+
+	float4 tex2Dlod(s, float4 t)
+	{
+		asm {
+			texldl	%0, %2, %1
+		}
+	}
+
+	float4 tex2Dproj(s, float4 t)
+	{
+		asm {
+			texldp	%0, %2, %1
+		}
+	}
+
 	float4 texCUBE(s, float3 t)
 	{
 		asm {
 			texld	%0, %2, %1
 		}
 	}
+
+	float4 texCUBEbias(s, float4 t)
+	{
+		asm {
+			texldb	%0, %2, %1
+		}
+	}
+
+	float4 texCUBEgrad(s, float3 t, float3 ddx, float3 ddy)
+	{
+		asm {
+			texldd	%0, %2, %1, %3, %4
+		}
+	}
+
+	float4 texCUBElod(s, float4 t)
+	{
+		asm {
+			texldl	%0, %2, %1
+		}
+	}
+
+	float4 texCUBEproj(s, float4 t)
+	{
+		asm {
+			texldp	%0, %2, %1
+		}
+	}
+
 
 	// Returns 1/distance(x, y), so you can '* rdistance()' instead of '/ distance()' for the most efficiency
 	float rdistance(float3 x, float3 y)
