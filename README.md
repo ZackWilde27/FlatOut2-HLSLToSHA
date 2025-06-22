@@ -44,9 +44,12 @@ Table of Contents
 	- [Swizzling Vectors](https://github.com/ZackWilde27/FlatOut2-HLSLToSHA/tree/main?tab=readme-ov-file#swizzling-vectors-1)
 
 - [Shader Model 3](https://github.com/ZackWilde27/FlatOut2-HLSLToSHA/tree/main?tab=readme-ov-file#shader-model-3)
+	- [3.0 Types](https://github.com/ZackWilde27/FlatOut2-HLSLToSHA#30-types)
 	- [3.0 Intrinsic Functions](https://github.com/ZackWilde27/FlatOut2-HLSLToSHA#30-intrinsic-functions)
 	- [If Statements](https://github.com/ZackWilde27/FlatOut2-HLSLToSHA#30-ifs)
+	- [3.0 Loops](https://github.com/ZackWilde27/FlatOut2-HLSLToSHA#30-loops)
 	- [3.0 Functions](https://github.com/ZackWilde27/FlatOut2-HLSLToSHA#30-functions)
+	- [Structs](https://github.com/ZackWilde27/FlatOut2-HLSLToSHA#structs)
 
 - [Troubleshooting](https://github.com/ZackWilde27/FlatOut2-HLSLToSHA/blob/main/README.md#troubleshooting)
 
@@ -916,6 +919,25 @@ A couple features no longer exist in shader model 3:
 
 <br>
 
+## 3.0 Types
+
+Back in the shader model 1 days, GPUs had no integer or bool support in hardware, so they were just floats in disguise (which is why you can use floats when indexing into arrays)
+
+But now there is actual support, so integers and bools have their own registers
+```hlsl
+const float constF = 1.0f;
+const int constI = 1;
+const bool constB = false;
+
+// constF should map to a C register (c32.x for example)
+// constI should map to an I register (i0.x for example)
+// constB should map to a B register (b0.x for example)
+```
+
+Ironically this means it's more limited than before, since there's only 16 integer registers for constants, when before you could have as many integers as floats
+
+<br>
+
 ## 3.0 Intrinsic Functions
 
 The vertex shader's intrinsics changed a bit:
@@ -968,16 +990,77 @@ Ifs are now possible with the new shader model
 ```hlsl
 float posX = pos.x;
 
+if (posX < 0.0f)
+{
+    posX += 1;
+}
+else
+{
+    posX -= 1;
+}
+
+// You can do one-liners without brackets
 if (posX > 0.0f)
     posX = -posX;
+
+// It also supports else-if now
+if (posX < 0.0f)
+    doThis();
+else if (posX > 0.0f)
+    doThat();
+else
+    dontDoThisOrThat();
 
 ```
 
 It'd be much shorter to tell you what it *can't* do:
-- There's no ```else if```
+- The 2 things being compared need to have the same swizzle, though the compiler should allocate a register for that if the issue comes up
 - No ! operator (yet at least)
-- You can't use ```return``` in the if, that's a limitation with the assembly
+- Using ```return``` in an if will not stop the shader there, but you can kinda do it anyway by putting the rest of the shader in the else
 - While you can do && and ||, it's not very efficient at all, since there's no jump instruction
+
+<br>
+
+## 3.0 Loops
+
+### For Loops
+Fors can now use real loops with the new shader model.
+
+In order to allow you to pick whether it's unrolled or uses the loop instruction, I implemented HLSL's attribute system
+```hlsl
+// Fors are unrolled by default
+// Add the 'loop' attribute to use the new loop instruction
+[loop]
+for (int i = 0; i < 5; i++)
+{
+    // You can use break in these new loops to end early
+    break;
+
+    // There's an instruction for breaking on a condition, so the compiler will use it if you write an if with a single break inside
+    if (something)
+    {
+        break;
+    }
+}
+```
+
+### While
+On top of the new for loops, I've added ```while``` and ```do while```
+```hlsl
+// While checks if it should break before each iteration
+while (x)
+{
+    break;
+}
+
+// Do While checks if it should break after each iteration
+do
+{
+    break;
+} while (y);
+```
+
+There is a limitation where it can only loop 255 times max, but that would be difficult to run into, and looping that many times is bad anyways
 
 <br>
 
@@ -1023,6 +1106,55 @@ There is a new compiler setting, ```inlinePreferred``` which if False, will make
 inline float4 myFunction(float4 x)
 {
 
+}
+```
+
+<br>
+
+## Structs
+Structures are supported in all shader models, but I'm putting it in this section since shader model 1 is limited on registers
+
+Implementing it was quite a big task, so I left some low-priority features out for now, which I may implement in the future
+    - You can't use structs as parameters for the shaders themselves, unlike real HLSL
+    - No constant structs
+
+```hlsl
+float4 PixelShader()
+{
+    // Structs will be packed just like constants
+    // So thatStruct will only take up 1 register
+    struct thatStruct
+    {
+        float that;
+        float those;
+        float2 these;
+    };
+
+    // You can have structs inside structs as well
+    struct myStruct
+    {
+        thatStruct tomato;
+        thatStruct potato;
+    } // The semicolon on the struct itself is optional
+
+    // Defining structs is just like C, using curly brackets
+    myStruct s = {
+        { 1.0f, 2.0f, float2(3.0f, 4.0f) },
+        { 5.0f, 6.0f, float2(7.0f, 8.0f) }
+    };
+
+    float var1 = s.tomato.these.y;
+    s.potato.those = 9.0f;
+}
+```
+
+Because of the way structs are handled, you can't have them as parameters for static functions
+```hlsl
+static float MyFunction(myStruct s)
+{
+    // Can't be done, it order to know what register tomato.that maps to, it needs a specific object to reference
+    // It could technically be implemented but it would be very inefficient, copying over the entire structure before calling the function
+    return s.tomato.that;
 }
 ```
 
