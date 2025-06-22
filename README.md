@@ -1115,8 +1115,9 @@ inline float4 myFunction(float4 x)
 Structures are supported in all shader models, but I'm putting it in this section since shader model 1 is limited on registers
 
 Implementing it was quite a big task, so I left some low-priority features out for now, which I may implement in the future
-    - You can't use structs as parameters for the shaders themselves, unlike real HLSL
-    - No constant structs
+
+- You can't use structs as parameters for the shaders themselves, unlike real HLSL
+- No constant structs
 
 ```hlsl
 float4 PixelShader()
