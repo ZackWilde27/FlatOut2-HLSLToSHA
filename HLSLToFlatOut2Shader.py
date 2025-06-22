@@ -1,5 +1,5 @@
 # Zack's HLSL to FlatOut SHA
-version = "v3.3"
+version = "v3.3.1"
 # Am I particularly proud of this code? uhh
 
 try:
@@ -156,8 +156,6 @@ def GetHStructProperty(hstruct, name):
 
 def ConvertSwizzles(to, frm):
     chart = "xyzwrbga"
-
-    print("ConvertSwizzles:", to, frm)
 
     (keyword1, swizzle1) = frm.split(".")
     (keyword2, swizzle2) = to.split(".")
@@ -1222,7 +1220,6 @@ def CompileOperand_Partial(string, ext="", dst="", components=4):
                         name = '.'.join(item[:-1]).strip()
 
                         register = HVarNameToRegister(name)
-                        print(name, register)
                         end = ReplaceSwizzled(f"%{dex + 1}", register, end)
 
                         for match in findall(f"%{dex + 1}\\+[0-9]+", end):
