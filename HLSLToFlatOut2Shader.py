@@ -1,5 +1,5 @@
 # Zack's HLSL to FlatOut SHA
-version = "v3.3.1"
+version = "v3.3.2"
 # Am I particularly proud of this code? uhh
 
 try:
@@ -650,7 +650,7 @@ def HVarNameToRegister(name, swizzle=True):
                 swizzle = ""
                 if "." in register:
                     (register, swizzle) = register.split(".")
-                elif Swizzlable(hv.type) and (hv.type.size < 4 or hv.offset):
+                elif Swizzlable(hv.type) and (hv.type.size < 4 or hv.offset) and register[0] != "v":
                     swizzle = OffsetProperty(Swizzle("", hv.type.size)[1:], hv.offset)
             else:
                 Error(f"HVarNameToRegister: Unknown variable name [{keyword}]")
