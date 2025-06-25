@@ -1,5 +1,5 @@
 # Zack's HLSL to FlatOut SHA
-version = "v3.3.2"
+version = "v3.3.3"
 # Am I particularly proud of this code? uhh
 
 try:
@@ -1226,7 +1226,7 @@ def CompileOperand_Partial(string, ext="", dst="", components=4):
                             end = end.replace(match, f"{register[0]}{int(RemoveSwizzle(register[1:])) + int(match[match.index("+") + 1:])}")
 
                         end = end.replace(f"%{dex + 1}", register)
-                    return [dst + swiz, prepend + end + "\n" + (f"mov\t{prevDst}, {dst + swiz}\n" if swiz else "")]
+                    return [dst + swiz, prepend + end + "\n"]
 
     for op in ops:
         if op[0] in string:
