@@ -398,9 +398,7 @@ for (int i = 0; i < 5; i += 1)
 If the index is referenced, the compiler will insert the code to keep track of it.
 ```hlsl
 for (float i = 1.0f; i > 0.0f; i -= 0.25f)
-{
     var1 += i;
-}
 ```
 
 Since Python is the one doing the looping, I added the option to write it in a pythonic way.
@@ -878,20 +876,20 @@ float4 PixelShader(float4 colour, float4 specular, float4 dirt, float4 lighting)
 }
 
 
-// It's now
+// It's now:
 sampler2D colour;
 samplerCUBE specular;
 sampler2D dirt;
 samplerCUBE lighting;
 
-float4 PixelShader()
+float4 PixelShader(float2 myUV)
 {
 	// You can sample textures more than once with whatever coordinates
 	return tex2D(colour, myUV);
 }
 ```
 
-AMBIENT, FRESNEL, BLEND, and EXTRA are gone, since you can pass whatever data between the shaders
+AMBIENT, FRESNEL, BLEND, and EXTRA are gone, since you can pass whatever you want to the pixel shader
 ```hlsl
 // Parameters for the pixel shader can be written to in the vertex shader
 // You can have 10 of them
@@ -921,7 +919,7 @@ A couple features no longer exist in shader model 3:
 
 ## 3.0 Types
 
-Back in the shader model 1 days, GPUs had no integer or bool support in hardware, so they were just floats in disguise (which is why you can use floats when indexing into arrays)
+Back in the shader model 1 days, GPUs had little-to-no integer or bool support in hardware, so they were just floats in disguise (which is why you can use floats when indexing into arrays)
 
 But now there is actual support, so integers and bools have their own registers
 ```hlsl
@@ -1026,14 +1024,14 @@ It'd be much shorter to tell you what it *can't* do:
 ### For Loops
 Fors can now use real loops with the new shader model.
 
-In order to allow you to pick whether it's unrolled or uses the loop instruction, I implemented HLSL's attribute system
+To allow you to pick whether it's unrolled or uses loop, I implemented HLSL's attribute system
 ```hlsl
 // Fors are unrolled by default
-// Add the 'loop' attribute to use the new loop instruction
+// Add the 'loop' attribute to use the new instruction
 [loop]
 for (int i = 0; i < 5; i++)
 {
-    // You can use break in these new loops to end early
+    // You can use 'break' in these new loops to end early
     break;
 
     // There's an instruction for breaking on a condition, so the compiler will use it if you write an if with a single break inside
@@ -1060,7 +1058,7 @@ do
 } while (y);
 ```
 
-There is a limitation where it can only loop 255 times max, but that would be difficult to run into, and looping that many times is bad anyways
+There is a limitation where it can only loop 255 times max, but that would be difficult to run into, and looping that many times in a shader is bad anyways
 
 <br>
 
@@ -1100,6 +1098,8 @@ return myFunction(col);
 // ret
 
 ```
+So unless it's a long function, or one that takes no parameters and returns void, you should stick with inline
+
 
 There is a new compiler setting, ```inlinePreferred``` which if False, will make all functions static unless marked with ```inline```
 ```hlsl
@@ -1114,7 +1114,7 @@ inline float4 myFunction(float4 x)
 ## Structs
 Structures are supported in all shader models, but I'm putting it in this section since shader model 1 is limited on registers
 
-Implementing it was quite a big task, so I left some low-priority features out for now, which I may implement in the future
+Implementing it took quite a bit of refactoring, so I left some low-priority features out, which I plan on implementing in the future
 
 - You can't use structs as parameters for the shaders themselves, unlike real HLSL
 - No constant structs
@@ -1224,8 +1224,7 @@ float4 PixelShader(float2 uv2D, float3 uvNormal, float3 psPos, float3 camPos, fl
     float3 newCol = lerp(greyscale, col, 0.9f);
     col = lerp(newCol, texCUBE(specular, reflection), f);
 
-    float4 light = texCUBE(lighting, uvNormal);
-    light.rgb = light.a * SHADOW;
+    float4 light = texCUBE(lighting, uvNormal).a * SHADOW;
     light = saturate(mad(AMBIENT, 0.6f, light.rgb));
 
     return col * light;
