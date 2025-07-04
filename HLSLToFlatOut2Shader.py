@@ -1,5 +1,5 @@
 # Zack's HLSL to FlatOut SHA
-version = "v3.3.3"
+version = "v3.3.4"
 # Am I particularly proud of this code? uhh
 
 try:
@@ -165,8 +165,9 @@ def ConvertSwizzles(to, frm):
     for char in swizzle2:
         dex = chart.index(char) % 4
 
-        if dex >= len(swizzle1):
-            Error(f"Can\'t access the {char} component of a float{len(swizzle1)}")
+        swizzleLen = len(swizzle1)
+        if dex >= swizzleLen:
+            Error(f"Can\'t access the {char} component of a float{swizzleLen if swizzleLen > 1 else ""}")
             newSwizzle = swizzle1
             break
 
@@ -615,6 +616,7 @@ def HVarNameToRegister(name, swizzle=True):
             endIndex = name.index("\"", index + 1)
             register = name[index + 1:endIndex]
             index = endIndex + 1
+            currentType = GetType("float4")
             continue
 
         dot = name[index] == "."
@@ -632,7 +634,7 @@ def HVarNameToRegister(name, swizzle=True):
                 if "." in register:
                     (register, swizzle) = register.split(".")
                 currentType = GetHStructProperty(currentType, prop).type
-                break
+
             else:
                 if swizzle:
                     swizzle = ConvertSwizzles(f"{register}.{HandleProperty(prop)}", f"{register}.{swizzle}")
@@ -718,7 +720,7 @@ def CarefulReplace(text, subject, replacement):
             script = script.replace(i + subject + j, i + replacement + j)
 
     return script
-            
+
 # returns the ) to the ( that you give it in a string, basically it skips nested parenthasis
 # The index has to be after the open bracket, just so it doesn't have to factor it in
 def GetParEnd(string, index, par="()"):
@@ -755,7 +757,7 @@ def AllocateRegister(offset=0, commit=False, inFunction=-1, defType="float4"):
         inFunction = InFunction()
 
     if inFunction:
-        if IsInline(bStatic, bInline):
+        if not IsInline(bStatic, bInline):
             return StaticRegister(offset + 1 + len(params))
         functionRegisters += 1
         return "%z" + str(functionRegisters)
@@ -1019,6 +1021,8 @@ def HVarNameToSize(name):
 
     if HasMath(name):
         tokens = BreakdownMath(name)
+        if "(" in tokens[0]:
+            tokens[0] = SliceWithStrings(tokens[0], "(", ")")
         return HVarNameToSize(tokens[0])
 
     if "." in name:
@@ -1220,12 +1224,19 @@ def CompileOperand_Partial(string, ext="", dst="", components=4):
                         name = '.'.join(item[:-1]).strip()
 
                         register = HVarNameToRegister(name)
+
+                        if register[0] == "%":
+                            # Prevents it being mistaken for one of the other parameters
+                            register = "%\\" + register[1:]
+
                         end = ReplaceSwizzled(f"%{dex + 1}", register, end)
 
                         for match in findall(f"%{dex + 1}\\+[0-9]+", end):
                             end = end.replace(match, f"{register[0]}{int(RemoveSwizzle(register[1:])) + int(match[match.index("+") + 1:])}")
 
                         end = end.replace(f"%{dex + 1}", register)
+
+                    end = end.replace("%\\", "%")
                     return [dst + swiz, prepend + end + "\n"]
 
     for op in ops:
@@ -1875,6 +1886,7 @@ def CompileHLSL(script, localVars=-1, dst="r0", addLines=True, canDiscard=True):
                 buffer = ""
 
                 unusedRegisters = 0
+
                 line = line.strip()
                 if not line: continue
 
@@ -1896,7 +1908,7 @@ def CompileHLSL(script, localVars=-1, dst="r0", addLines=True, canDiscard=True):
 
                     if StartsWith(line, "if"):
                         typeOfExpr = "If"
-                        (code, index) = ReadIf(script, index - len(line), dst, addLines)
+                        (code, index) = ReadIf(script, script.rindex("if", 0, index), dst, addLines)
                         output += code
                         continue
 
@@ -2505,6 +2517,10 @@ def GetZero(defType):
             return "0"
     return "0.0f"
 
+def WriteToPass(hvar):
+    return "\t\t" + ("PixelShaderConstant" if isPixelShader else "VertexShaderConstant") + hvar.type.name[0].upper() + "[" + RemoveSwizzle(hvar.register[1:]) + "] = " + hvar.value.replace("%x", GetZero(hvar.type.name[0])) + ";\n"
+
+
 
 def CompileShader(shader, dst):
     global maxR, maxC, maxV, maxInstructions, hfuncs, linenum, startC, rStatus, hvars, dhvars, psSnapshot, pStatus
@@ -2748,8 +2764,6 @@ if __name__ == '__main__':
 
                 compiledpixelshader = CompileShader(pixelshader, "r0" if float(shaderModel) < 2.0 else "oC0")
 
-                def WriteToPass(hvar):
-                    return "\t\t" + ("PixelShaderConstant" if isPixelShader else "VertexShaderConstant") + hvar.type.name[0].upper() + "[" + RemoveSwizzle(hvar.register[1:]) + "] = " + hvar.value.replace("%x", GetZero(hvar.type.name[0])) + ";\n"
 
                 def WriteToDef(hvar):
                     return f"\t\tdef{"" if hvar.type.name[0] == "f" else hvar.type.name[0]}\t" + (hvar.register[:hvar.register.index(".")] if "." in hvar.register else hvar.register) + ", " + SliceWithStrings(hvar.value, "(", ")").replace("%x", GetZero(hvar.type[0])) + "\n"
