@@ -43,6 +43,8 @@ Table of Contents
 	- [Inline Ifs](https://github.com/ZackWilde27/FlatOut2-HLSLToSHA/tree/main?tab=readme-ov-file#inline-ifs-1)
 	- [Swizzling Vectors](https://github.com/ZackWilde27/FlatOut2-HLSLToSHA/tree/main?tab=readme-ov-file#swizzling-vectors-1)
 
+ - [Writing Post Processing Shaders](https://github.com/ZackWilde27/FlatOut2-HLSLToSHA#writing-post-processing-shaders)
+
 - [Shader Model 3](https://github.com/ZackWilde27/FlatOut2-HLSLToSHA/tree/main?tab=readme-ov-file#shader-model-3)
 	- [3.0 Types](https://github.com/ZackWilde27/FlatOut2-HLSLToSHA#30-types)
 	- [3.0 Intrinsic Functions](https://github.com/ZackWilde27/FlatOut2-HLSLToSHA#30-intrinsic-functions)
@@ -857,6 +859,37 @@ PixelShader(colour, specular, dirt, lighting)
 }
 ```
 
+<br><br>
+
+# Writing Post Processing Shaders
+Almost every post processing shader has no vertex shader, so to make one you just don't include it
+```hlsl
+// Without a vertex shader it'll automatically give it the PosprojTex__ stream format
+
+float4 PixelShader(float4 colour)
+{
+	return colour;
+}
+```
+
+There is at least one exception, and in that case you'll have to give it the correct input stream format manually
+```hlsl
+// Normally the Tex__ indicates the number of UV inputs in the vertex shader
+// but for post processing it indicates the number of texture samples in the pixel shader
+const string inputStreamFormat = "PosprojTex1";
+
+float4 VertexShader()
+{
+	//...
+}
+
+// Since there's only 1 sample, that makes it Tex1
+// (there are some shaders that don't follow this rule, using Tex4 but only getting 2 samples)
+float4 PixelShader(float4 sample1)
+{
+	//...
+}
+```
 
 <br><br>
 
