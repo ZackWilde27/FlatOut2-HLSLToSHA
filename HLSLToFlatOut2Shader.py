@@ -1,5 +1,5 @@
 # Zack's HLSL to FlatOut SHA
-version = "v3.3.4"
+version = "v3.3.5"
 # Am I particularly proud of this code? uhh
 
 try:
@@ -92,10 +92,11 @@ class HVar:
 
 
 class HStructProperty:
-    def __init__(self, name, type, offset):
+    def __init__(self, name, type, offset, semantic):
         self.name = name
         self.type = type
         self.offset = offset
+        self.semantic = semantic
 
 def Int(x, default=0):
     if x.isnumeric():
@@ -126,12 +127,16 @@ class HType:
             offset = 0
             for prop in properties:
                 sides = prop.split(" ")
+                semantic = ""
+                if ":" in sides[1]:
+                    (sides[1], semantic) = [item.strip() for item in sides[1].split(":")]
+
                 propType = GetType(sides[0])
                 dimensions = propType.size
                 freeComponents = 4 - (offset % 4)
                 if freeComponents < dimensions:
                     offset += freeComponents
-                self.properties.append(HStructProperty(sides[1], propType, offset))
+                self.properties.append(HStructProperty(sides[1], propType, offset, semantic))
                 offset += dimensions
 
             self.size = offset
@@ -1684,7 +1689,7 @@ def HandleIf(condition, onTrue, onFalse, dst):
             out += tabs[:-1] + "else\n" + AddTabs(onFalse, tabs) + tabs[:-1] + "endif\n"
             tabs = tabs[:-1]
     else:
-        out += "\n".join([e + "endif" for e in reversed(endifs)])
+        out += "\n".join([e + "endif\n" for e in reversed(endifs)])
 
     return f"{out.strip()}\n{otherifs}"
 
@@ -1901,22 +1906,6 @@ def CompileHLSL(script, localVars=-1, dst="r0", addLines=True, canDiscard=True):
                                 output += CompileOperand(line, "", "")[1]
                             continue
 
-                if float(shaderModel) >= 2.0:
-                    if line == "break":
-                        output += "break\n"
-                        continue
-
-                    if StartsWith(line, "if"):
-                        typeOfExpr = "If"
-                        (code, index) = ReadIf(script, script.rindex("if", 0, index), dst, addLines)
-                        output += code
-                        continue
-
-                def MakeWhile(loopCode):
-                    sembly = f"rep {AddConstant("", "255", "int", False, False)}\n"
-                    sembly += AddTabs(CompileHLSL(loopCode, addLines=False, canDiscard=False).strip(), "\t")
-                    return sembly + "endrep\n"
-
                 if StartsWith(line, "struct"):
                     structName = line[len("struct"):].strip()
                     endIndex = GetParEnd(script, index, "{}")
@@ -1932,7 +1921,23 @@ def CompileHLSL(script, localVars=-1, dst="r0", addLines=True, canDiscard=True):
                     index = endIndex + 1
                     continue
 
+                def MakeWhile(loopCode):
+                    sembly = f"rep {AddConstant("", "255", "int", False, False)}\n"
+                    sembly += AddTabs(CompileHLSL(loopCode, addLines=False, canDiscard=False).strip(), "\t")
+                    return sembly + "endrep\n"
+
                 if float(shaderModel) >= 2.0:
+                    if line == "break":
+                        output += "break\n"
+                        continue
+
+                    if StartsWith(line, "if"):
+                        typeOfExpr = "If"
+                        (code, index) = ReadIf(script, script.rindex("if", 0, index), dst, addLines)
+                        output += code
+                        #if output[-1] != "\n": output[-1] += "\n"
+                        continue
+
                     if StartsWith(line, "do") or line == "do":
                         typeOfExpr = "Do While"
                         (loopCode, endIndex) = GetBracketsOrNextLine(script, index - 1, line[2:], addLines)
@@ -2092,74 +2097,72 @@ def CompileHLSL(script, localVars=-1, dst="r0", addLines=True, canDiscard=True):
                     else:
                         (line, bStatic, bInline) = GetSpecifiers(line)
                         tokens = line.split(" ")
-                        if True:#IsType(tokens[0]):
-                            if "(" in tokens[1]:
-                                typeOfExpr = "Defining Function"
-                                tokens[1] = SliceWithStrings(line, " ", "(")
+                        t = GetType(tokens[0].strip())
+                        if "(" in tokens[1]:
+                            typeOfExpr = "Defining Function"
+                            tokens[1] = SliceWithStrings(line, " ", "(").strip()
 
-                                if (not IsInline(bStatic, bInline)) and float(shaderModel) < 2.0:
-                                    Warn(f"Shader Model 1 does not support static functions, defaulting to inline for {tokens[1]}...")
-                                    bStatic = False
-                                    inlinePreferred = True
+                            if (not IsInline(bStatic, bInline)) and float(shaderModel) < 2.0:
+                                Warn(f"Shader Model 1 does not support static functions, defaulting to inline for {tokens[1]}...")
+                                bStatic = False
+                                inlinePreferred = True
 
-                                params = [GetSizeFromParam(item.strip()) for item in SliceWithStrings(line, "(", ")").split(",")]
-                                rtnType = SizeOf(line[:line.index(" ")])
+                            params = [GetSizeFromParam(item.strip()) for item in SliceWithStrings(line, "(", ")").split(",")]
+                            rtnType = SizeOf(line[:line.index(" ")])
 
-                                hfuncs.append(HFunc(tokens[1], "", rtnType, params))
-                                args = [item.strip().split(" ") for item in SliceWithStrings(line, "(", ")").split(",")]
-                                scope = tokens[1]
-                                if args:
-                                    for i, item in enumerate(args):
-                                        hvars.append(HVar(item[-1], f"%{i + 1}" if IsInline(bStatic, bInline) else StaticRegister(i + 1), "", "float4" if len(item) == 1 else item[-2]))
-                                        if not IsInline(bStatic, bInline):
-                                            rStatus[-(i + 1)] = True
-                                temp = 0
-                                mode = 2
-                                buffer = ""
+                            hfuncs.append(HFunc(tokens[1], "", rtnType, params))
+                            args = [item.strip().split(" ") for item in SliceWithStrings(line, "(", ")").split(",")]
+                            scope = tokens[1]
+                            if args:
+                                for i, item in enumerate(args):
+                                    hvars.append(HVar(item[-1], f"%{i + 1}" if IsInline(bStatic, bInline) else StaticRegister(i + 1), "", "float4" if len(item) == 1 else item[-2]))
+                                    if not IsInline(bStatic, bInline):
+                                        rStatus[-(i + 1)] = True
+                            temp = 0
+                            mode = 2
+                            buffer = ""
 
-                            else:
-                                typeOfExpr = "Defining Variable"
-                                if "=" in line:
-                                    def DefineStruct(struct, register, script, index):
-                                        global linenum
-                                        output = ""
-                                        while script[index] != "{":
-                                            if script[index] == "\n" and addLines: linenum += 1
-                                            index += 1
+                        else:
+                            typeOfExpr = "Defining Variable"
+                            if "=" in line:
+                                def DefineStruct(struct, register, script, index):
+                                    global linenum
+                                    output = ""
+                                    while script[index] != "{":
+                                        if script[index] == "\n" and addLines: linenum += 1
                                         index += 1
-                                        for prop in struct.properties:
-                                            offsetRegister = GetFromHStruct(struct, register, prop.name)
+                                    index += 1
+                                    for prop in struct.properties:
+                                        offsetRegister = GetFromHStruct(struct, register, prop.name)
 
-                                            endIndex = CarefulSweep(script, index, ",}")
-                                            operand = script[index:endIndex]
-                                            if addLines: linenum += operand.count("\n")
-                                            operand = operand.strip()
-                                            if prop.type.properties:
-                                                (code, discard) = DefineStruct(prop.type, offsetRegister, operand, 0)
-                                                output += code
-                                            else:
-                                                output += CompileOperand(operand, "", offsetRegister, prop.type.size)[1]
+                                        endIndex = CarefulSweep(script, index, ",}")
+                                        operand = script[index:endIndex]
+                                        if addLines: linenum += operand.count("\n")
+                                        operand = operand.strip()
+                                        if prop.type.properties:
+                                            (code, discard) = DefineStruct(prop.type, offsetRegister, operand, 0)
+                                            output += code
+                                        else:
+                                            output += CompileOperand(operand, "", offsetRegister, prop.type.size)[1]
 
-                                            index = endIndex + 1
+                                        index = endIndex + 1
 
-                                        return (output, index)
+                                    return (output, index)
 
-                                    t = GetType(tokens[0].strip())
-
-                                    if char == "{" and t.properties:
-                                        register = AllocateRegister(0, True, defType=defType)
-                                        hvars.append(HVar(tokens[1], register, "", t.name))
-                                        (code, index) = DefineStruct(t, register, script, index - 1)
-                                        output += code
-                                    else:
-                                        tokens[2] = line[line.index("=") + 1:].strip()
-                                        tokens[0] = tokens[0].strip()
-                                        components = SizeOf(tokens[0])
-                                        r = CompileOperand(tokens[2], "", Swizzle(AllocateRegister(0, True, defType=defType), components), components)
-                                        hvars.append(HVar(tokens[1], r[0], "", t.name))
-                                        output += ("+" if bMeanwhile else "") + r[1]
-                                elif len(tokens) == 2:
-                                    hvars.append(HVar(tokens[1], AllocateRegister(0, True, defType=defType), "", tokens[0]))
+                                if char == "{" and t.properties:
+                                    register = AllocateRegister(0, True, defType=defType)
+                                    hvars.append(HVar(tokens[1], register, "", t.name))
+                                    (code, index) = DefineStruct(t, register, script, index - 1)
+                                    output += code
+                                else:
+                                    tokens[2] = line[line.index("=") + 1:].strip()
+                                    tokens[0] = tokens[0].strip()
+                                    components = SizeOf(tokens[0])
+                                    r = CompileOperand(tokens[2], "", Swizzle(AllocateRegister(0, True, defType=defType), components), components)
+                                    hvars.append(HVar(tokens[1], r[0], "", t.name))
+                                    output += ("+" if bMeanwhile else "") + r[1]
+                            elif len(tokens) == 2:
+                                hvars.append(HVar(tokens[1], AllocateRegister(0, True, defType=defType), "", tokens[0]))
 
                 else:
                     tokens = line.split(" ")

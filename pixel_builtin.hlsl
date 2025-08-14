@@ -367,8 +367,8 @@ float3 reflect(float3 i, float3 n)
 	float distance(float3 x, float3 y)
 	{
 		asm {
-			sub	%z1, %1, %2
-			dp3	%z, %z1, %z1
+			sub	%z0, %1, %2
+			dp3	%z, %z0, %z0
 			rsq	%z, %z
 			rcp	%0, %z
 		}
@@ -377,9 +377,9 @@ float3 reflect(float3 i, float3 n)
 	float distance(float2 x, float2 y)
 	{
 		asm {
-			sub	%z1, %1, %2
-			mul	%z, %z1.x, %z1.x
-			mad %z.w, %z1.y, %z1.y, %z
+			sub	%z0, %1, %2
+			mul	%z, %z0.x, %z0.x
+			mad %z.w, %z0.y, %z0.y, %z
 			rsq	%z, %z
 			rcp	%0, %z
 		}
