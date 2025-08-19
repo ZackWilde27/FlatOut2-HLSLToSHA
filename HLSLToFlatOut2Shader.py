@@ -1,5 +1,5 @@
 # Zack's HLSL to FlatOut SHA
-version = "v3.3.5"
+version = "v3.3.6"
 # Am I particularly proud of this code? uhh
 
 try:
@@ -455,7 +455,8 @@ def IsConst(line):
         for i in range(2, 5):
             for t in ["float", "int", "bool"]:
                 if line.startswith(t + str(i) + "("):
-                    if all([IsConst(item.strip()) for item in SliceWithStrings(line, "(", ")").split(",")]):
+                    parameters = line[line.index("("):GetParEnd(line, line.index("(") + 1)]
+                    if all([IsConst(item.strip()) for item in parameters.split(",")]):
                         return True
 
     return False
@@ -605,7 +606,7 @@ def HVarNameToRegister(name, swizzle=True):
 
     prefix = ""
     register = ""
-    currentType = ""
+    currentType = None
     index = 0
     swizzle = ""
     while index < len(name):
@@ -661,6 +662,7 @@ def HVarNameToRegister(name, swizzle=True):
                     swizzle = OffsetProperty(Swizzle("", hv.type.size)[1:], hv.offset)
             else:
                 Error(f"HVarNameToRegister: Unknown variable name [{keyword}]")
+                break
 
         index = endIndex
 
@@ -1667,7 +1669,7 @@ def HandleIf(condition, onTrue, onFalse, dst):
         ors = condition.split("||")
         buffer = ""
         for i in reversed(ors):
-            buffer = HandleIf(i, onTrue, buffer if buffer else onFalse, dst).strip()
+            buffer = HandleIf(i, onTrue, buffer.strip() if buffer else onFalse, dst)
 
         return buffer
 
@@ -1676,7 +1678,8 @@ def HandleIf(condition, onTrue, onFalse, dst):
     tabs = ""
     for i, c in enumerate(conditions):
         (preamble, c) = CompileCondition(c)
-
+        if preamble:
+            preamble = tabs + preamble
         out += preamble + tabs + f"if{ParseCondition(c.strip())}\n"
         endifs.append(tabs)
         tabs += "\t"
@@ -1689,9 +1692,9 @@ def HandleIf(condition, onTrue, onFalse, dst):
             out += tabs[:-1] + "else\n" + AddTabs(onFalse, tabs) + tabs[:-1] + "endif\n"
             tabs = tabs[:-1]
     else:
-        out += "\n".join([e + "endif\n" for e in reversed(endifs)])
+        out += "".join([e + "endif\n" for e in reversed(endifs)])
 
-    return f"{out.strip()}\n{otherifs}"
+    return f"{out}{otherifs}"
 
 
 def GetBracketsOrNextLine(script, index, previousBuffer, addLines=True):

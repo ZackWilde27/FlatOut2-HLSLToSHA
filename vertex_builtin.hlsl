@@ -5,16 +5,16 @@
 // Intrinsic Functions
 ////////////////////////////
 
-float4 mad(a, b, c)
+float4 mad(x, y, a)
 {
     asm {
         mad	%0, %1, %2, %3
     }
 }
 
-float4 fma(a, b, c)
+float4 fma(x, y, a)
 {
-    return mad(a, b, c);
+    return mad(x, y, a);
 }
 
 
@@ -515,6 +515,13 @@ float4 float4(float2 xy, float2 zw)
 {
     "%0.xy" = xy;
     "%0.zw" = zw;
+}
+
+float4 float4(float2 xy, float z, float w)
+{
+    "%0.xy" = xy;
+    "%0.z" = z;
+    "%0.w" = w;
 }
 
 float4 float4(float3 xyz, float w)

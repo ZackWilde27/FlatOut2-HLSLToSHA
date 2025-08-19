@@ -565,10 +565,23 @@ float3 normalize(float3 value)
 		"%0.z" = z;
 	}
 
+	float4 float4(float2 xy, float z, float w)
+	{
+		"%0.xy" = xy;
+		"%0.z" = z;
+		"%0.w" = w;
+	}
+
 	float4 float4(float2 xy, float2 zw)
 	{
 		"%0.xy" = xy;
 		"%0.zw" = zw;
+	}
+
+	float4 float4(float3 xyz, float w)
+	{
+		"%0.xyz" = xyz;
+		"%0.w" = w;
 	}
 
 	float4 float4(float x, float y, float z, float w)
@@ -578,15 +591,17 @@ float3 normalize(float3 value)
 		"%0.z" = z;
 		"%0.w" = w;
 	}
-#endif
+#else
 
 // Due to the swizzle limitations, only 3 of these can be done in shader model 1
-
 float4 float4(float3 rgb, float a)
 {
 	"%0.rgb" = rgb;
 	meanwhile "%0.a" = a;
 }
+
+#endif
+
 
 float4 float4(float x)
 {
